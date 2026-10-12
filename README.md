@@ -30,6 +30,7 @@ The presets are in the "Design" box:
 - **Ring B** (first photo, bottom ring): 16 halo stones, a tight and full entourage.
 - **Ring C** (second photo): ribbed gold collars, and the four cardinal collars
   are drawn out into points (the stones stay round).
+- **Ring D**: like Ring B, with a big / small / big / small pattern.
 
 ## Parameters
 
@@ -38,9 +39,15 @@ The presets are in the "Design" box:
 - **Entourage**: number of stones, auto size, stone size, space between stones,
   distance to the centre, setting collar width, ribbed collar and rib depth,
   milgrain beads (around the stone, on the outer edge, or both) and bead size.
+- **Stone pattern**: all the same, big·small, big·small·small, big·3 small,
+  big·big·small, or graduated sizes (big at N/S/E/W, at the diagonals, or at
+  the sides); size of the small stones; and where they sit (centred, on the
+  inner edge, or on the outer edge). Patterns start from the cardinal stones,
+  so the ring always stays symmetric.
 - **Cardinal stones** (north, south, east, west): round, round with a pointy
   collar, pear or marquise; size; point length.
-- **Connection legs**: legs mode, leg width, head height.
+- **Connection arms**: gold arms from the centre bezel to the halo stones
+  (auto = only when a stone does not touch the bezel), arm width, head height.
 - **Band**: ring size (EU), metal (yellow, rose, white gold, platinum), width,
   thickness, taper, profile (comfort, round, flat).
 - **Studio**: backdrop, exposure, sparkle glow, fire (dispersion), light bounces, turn table.

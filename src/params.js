@@ -32,6 +32,11 @@ export const DEFAULTS = {
   milgrainMode: 'both',     // inner | outer | both
   milgrainSize: 0.13,
 
+  // Size pattern of the entourage stones
+  haloPattern: 'uniform',   // see HALO_PATTERNS in ring.js
+  smallRatio: 0.65,         // small stone size relative to the big ones
+  smallAlign: 'middle',     // inner | middle | outer: where small stones sit
+
   // Cardinal stones (N, S, E, W)
   cardinalShape: 'round',   // round | pointed | pear | marquise
   cardinalScale: 1.0,
@@ -60,6 +65,7 @@ export const PRESETS = {
     haloCount: 12, haloAutoSize: true, haloGap: 0.15, haloSpacing: 0.18, cupWall: 0.26,
     cardinalShape: 'round', cardinalScale: 1.0,
     ribbed: false, milgrain: true, milgrainMode: 'outer', legsMode: 'auto',
+    haloPattern: 'uniform',
   },
   // Bottom ring of the first photo: 16 halo stones, tight entourage.
   B: {
@@ -67,6 +73,15 @@ export const PRESETS = {
     haloCount: 16, haloAutoSize: true, haloGap: 0.08, haloSpacing: 0.05, cupWall: 0.24,
     cardinalShape: 'round', cardinalScale: 1.0,
     ribbed: false, milgrain: true, milgrainMode: 'outer', legsMode: 'auto',
+    haloPattern: 'uniform',
+  },
+  // Big / small pattern variation of ring B.
+  D: {
+    stoneWidth: 9.2, stoneLength: 6.0, stoneDepth: 1.26,
+    haloCount: 16, haloAutoSize: true, haloGap: 0.1, haloSpacing: 0.06, cupWall: 0.26,
+    cardinalShape: 'round', cardinalScale: 1.0,
+    ribbed: false, milgrain: true, milgrainMode: 'outer', legsMode: 'auto',
+    haloPattern: 'alternate', smallRatio: 0.62, smallAlign: 'middle',
   },
   // Second photo: ribbed collars, cardinal collars drawn out into points.
   C: {
@@ -74,6 +89,7 @@ export const PRESETS = {
     haloCount: 12, haloAutoSize: true, haloGap: 0.12, haloSpacing: 0.06, cupWall: 0.34,
     cardinalShape: 'pointed', cardinalScale: 1.3, tipLength: 0.9,
     ribbed: true, ribDepth: 0.045, milgrain: true, milgrainMode: 'inner', legsMode: 'auto',
+    haloPattern: 'uniform',
   },
 };
 
@@ -92,6 +108,7 @@ export const SCHEMA = [
         { label: 'Ring A', action: 'presetA' },   // photo 1, top: 12 stones
         { label: 'Ring B', action: 'presetB' },   // photo 1, bottom: 16 stones
         { label: 'Ring C', action: 'presetC' },   // photo 2: ribbed, pointy collars
+        { label: 'Ring D', action: 'presetD' },   // big / small pattern
       ] },
     ],
   },
@@ -109,7 +126,7 @@ export const SCHEMA = [
     folder: 'Entourage', open: true, items: [
       { key: 'haloCount', label: 'Number of stones', type: 'range', min: 8, max: 26, step: 1 },
       { key: 'haloAutoSize', label: 'Auto size stones', type: 'toggle' },
-      { key: 'haloStoneSize', label: 'Stone size', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm' },
+      { key: 'haloStoneSize', label: 'Stone size (big)', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm' },
       { key: 'haloSpacing', label: 'Space between stones', type: 'range', min: 0, max: 0.8, step: 0.01, unit: 'mm' },
       { key: 'haloGap', label: 'Distance to centre', type: 'range', min: 0, max: 2.5, step: 0.01, unit: 'mm' },
       { key: 'cupWall', label: 'Setting collar', type: 'range', min: 0.12, max: 0.8, step: 0.01, unit: 'mm' },
@@ -122,6 +139,26 @@ export const SCHEMA = [
         { value: 'outer', label: 'Outer edge' },
       ] },
       { key: 'milgrainSize', label: 'Bead size', type: 'range', min: 0.06, max: 0.25, step: 0.005, unit: 'mm' },
+    ],
+  },
+  {
+    folder: 'Stone pattern', open: true, items: [
+      { key: 'haloPattern', label: 'Pattern', type: 'select', options: [
+        { value: 'uniform', label: 'All the same' },
+        { value: 'alternate', label: 'Big · small · big · small' },
+        { value: 'bigTwoSmall', label: 'Big · small · small' },
+        { value: 'bigThreeSmall', label: 'Big · 3 small' },
+        { value: 'twoBigSmall', label: 'Big · big · small' },
+        { value: 'graduatedCardinal', label: 'Graduated, big at N/S/E/W' },
+        { value: 'graduatedDiagonal', label: 'Graduated, big at diagonals' },
+        { value: 'graduatedEastWest', label: 'Graduated, big at the sides' },
+      ] },
+      { key: 'smallRatio', label: 'Small stone size', type: 'range', min: 0.35, max: 1, step: 0.01, unit: '×' },
+      { key: 'smallAlign', label: 'Small stones line', type: 'select', options: [
+        { value: 'middle', label: 'Centred' },
+        { value: 'inner', label: 'Inner edge' },
+        { value: 'outer', label: 'Outer edge' },
+      ] },
     ],
   },
   {

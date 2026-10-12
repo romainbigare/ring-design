@@ -180,6 +180,29 @@ function smoothstep(e0, e1, x) {
   return t * t * (3 - 2 * t);
 }
 
+// Relative size (0..1, 1 = big stone) of halo stone i of N for a pattern.
+// i = distance (in stones) from the nearest cardinal stone.
+export const HALO_PATTERNS = {
+  uniform: () => 1,
+  alternate: (i) => (i % 2 === 0 ? 1 : 0),               // big, small, big, small
+  bigTwoSmall: (i) => (i % 3 === 0 ? 1 : 0),             // big, small, small
+  bigThreeSmall: (i) => (i % 4 === 0 ? 1 : 0),           // big, small, small, small
+  twoBigSmall: (i) => (i % 3 === 2 ? 0 : 1),             // big, big, small
+  graduatedCardinal: (i, N) => 0.5 + 0.5 * Math.cos((8 * Math.PI * i) / N), // big at N/S/E/W
+  graduatedDiagonal: (i, N) => 0.5 - 0.5 * Math.cos((8 * Math.PI * i) / N), // big at the diagonals
+  graduatedEastWest: (i, N) => 0.5 + 0.5 * Math.cos((4 * Math.PI * i) / N), // big at the sides
+};
+
+function patternFactor(pattern, i, N, smallRatio) {
+  const fn = HALO_PATTERNS[pattern] || HALO_PATTERNS.uniform;
+  // Repeating patterns count from the nearest cardinal stone, so the ring is
+  // always mirror-symmetric and the cardinals are big whatever the count.
+  const seg = N % 4 === 0 ? N / 4 : N % 2 === 0 ? N / 2 : N;
+  const k = i % seg;
+  const j = pattern.startsWith('graduated') ? i : Math.min(k, seg - k);
+  return smallRatio + (1 - smallRatio) * fn(j, N);
+}
+
 // ------------------------------------------------------------------ gem cache
 const gemCache = new Map();
 function cachedGem(key, make) {
@@ -400,15 +423,16 @@ export function buildRing(P, materials) {
   else cardinalIdx.add(0);
   const shape = P.cardinalShape;
   const cs = P.cardinalScale;
-  const nCard = cardinalIdx.size;
-  // tangential size of a stone relative to the base diameter D
-  const tanFactor = (i) => (cardinalIdx.has(i) ? cs : 1);
-  const K = (N - nCard) + nCard * cs;
+  // Size of every stone relative to the big stone size D (pattern), and
+  // cardinal stones get their own extra scale.
+  const sizeF = [];
+  for (let i = 0; i < N; i++) sizeF.push(patternFactor(P.haloPattern, i, N, P.smallRatio) * (cardinalIdx.has(i) ? cs : 1));
+  const K = sizeF.reduce((acc, f) => acc + f, 0);
 
   let D;
   if (P.haloAutoSize) {
     const Pb = ellipsePerimeter(a, b);
-    // path through round stone centres: Pb + 2π(d0 + D/2); stones + gaps must fill it.
+    // path through big stone centres: Pb + 2π(d0 + D/2); stones + gaps must fill it.
     // Small factor compensates for chord vs arc on the curved ends.
     D = (Pb + 2 * Math.PI * d0 - N * (2 * w + P.haloSpacing)) / (K * 1.015 - Math.PI);
     D = THREE.MathUtils.clamp(D, 0.6, 4);
@@ -416,19 +440,19 @@ export function buildRing(P, materials) {
     D = P.haloStoneSize;
   }
 
-  const roundGem = cachedGem(`b|round|${r3(D)}`, () => buildBrilliant({ shape: 'round', width: D, length: D, girdle: 0.03 * D }));
-  const cw = D * cs;
-  const cl = shape === 'pear' ? cw * 1.45 : shape === 'marquise' ? cw * 2.0 : cw;
+  // Unit-size stones (width 1 mm), scaled per stone. All halo stones of one
+  // shape share the same geometry and facet planes.
   const pointed = shape === 'pointed'; // round stone in a setting with a gold point
   const gemShape = pointed ? 'round' : shape;
-  const cardGem = cachedGem(`b|${gemShape}|${r3(cw)}|${r3(cl)}`, () => buildBrilliant({ shape: gemShape, width: cw, length: cl, girdle: 0.03 * cw }));
-  setDiamondPlanes(materials.halo, roundGem.planes);
-  setDiamondPlanes(materials.cardinal, cardGem.planes);
+  const cardRatio = shape === 'pear' ? 1.45 : shape === 'marquise' ? 2.0 : 1;
+  const roundUnit = cachedGem('b|round|1', () => buildBrilliant({ shape: 'round', width: 1, length: 1, girdle: 0.03 }));
+  const cardUnit = cachedGem(`b|${gemShape}|1|${cardRatio}`, () => buildBrilliant({ shape: gemShape, width: 1, length: cardRatio, girdle: 0.03 }));
+  setDiamondPlanes(materials.halo, roundUnit.planes);
+  setDiamondPlanes(materials.cardinal, cardUnit.planes);
 
   const path = arcTable(a, b, d0 + D / 2);
-  const ext = [];
-  let sumL = 0;
-  for (let i = 0; i < N; i++) { ext.push(D * tanFactor(i)); sumL += ext[i]; }
+  const ext = sizeF.map((f) => D * f);
+  const sumL = ext.reduce((acc, e) => acc + e, 0);
   const gap = (path.total - sumL) / N;
   const sPos = [0];
   for (let i = 1; i < N; i++) sPos.push(sPos[i - 1] + (ext[i - 1] + ext[i]) / 2 + gap);
@@ -443,31 +467,38 @@ export function buildRing(P, materials) {
 
   for (let i = 0; i < N; i++) {
     const isCard = cardinalIdx.has(i);
-    const gem = isCard ? cardGem : roundGem;
+    const unit = isCard ? cardUnit : roundUnit;
+    const gw = D * sizeF[i];               // stone width in mm
+    const outline = unit.outline.map((q) => q.clone().multiplyScalar(gw));
     const t = path.tAt(sPos[i]);
     const { p, n } = ellipsePoint(a, b, t, 0);
-    // inner extent of the stone along its local -Z
-    let minZ = Infinity;
-    for (const q of gem.outline) minZ = Math.min(minZ, q.y);
-    const off = d0 - minZ;
+    // Radial position: small stones on the inner line, the middle line or the
+    // outer line of the big stones.
+    let minZ = Infinity, maxZo = -Infinity;
+    for (const q of outline) { minZ = Math.min(minZ, q.y); maxZo = Math.max(maxZo, q.y); }
+    const align = P.smallAlign;
+    let off = d0 - minZ;                                            // inner edges aligned
+    if (align === 'middle') off = d0 + D / 2 - (minZ + maxZo) / 2;  // centres aligned
+    if (align === 'outer') off = d0 + D - maxZo;                    // outer edges aligned
+    off = Math.max(off, d0 - minZ);                                 // never closer than the gap
     const cx = p.x + n.x * off, cz = p.y + n.y * off;
     const rotY = Math.atan2(n.x, n.y);
     const m = new THREE.Matrix4().makeRotationY(rotY).setPosition(cx, 0, cz);
 
-    const mesh = new THREE.Mesh(gem.geometry, isCard ? materials.cardinal : materials.halo);
+    const mesh = new THREE.Mesh(unit.geometry, isCard ? materials.cardinal : materials.halo);
     mesh.position.set(cx, haloGirdleY, cz);
     mesh.rotation.y = rotY;
+    mesh.scale.setScalar(gw);
     mesh.castShadow = true;
     group.add(mesh);
-    stones.push({ t, n, p, gw: isCard ? cw : D });
+    stones.push({ t, n, p, gw, innerOff: off + minZ });
 
-    const gw = isCard ? cw : D;
-    const g = gem.girdle ?? 0.03 * gw;
+    const g = 0.03 * gw;
     const yTop = haloGirdleY + g / 2 + 0.1;
-    const yBot = haloGirdleY - gem.pavilionDepth - 0.12;
+    const yBot = haloGirdleY - unit.pavilionDepth * gw - 0.12;
     lowest = Math.min(lowest, yBot);
     const cupData = buildCup({
-      gem, gw, wall: w, yTop, yBot,
+      gem: { outline }, gw, wall: w, yTop, yBot,
       pointedTip: isCard && pointed ? P.tipLength : 0,
       roundStone: !isCard || shape === 'round' || pointed,
       ribbed: P.ribbed, ribDepth: P.ribDepth,
@@ -486,17 +517,20 @@ export function buildRing(P, materials) {
   // ---- connection arms ----------------------------------------------------
   // Small gold arms from the centre bezel to each halo setting. In 'auto'
   // mode they appear as soon as the halo no longer touches the bezel.
-  let legs = P.legsMode;
-  if (legs === 'auto') legs = P.haloGap > 0.12 ? 'all' : 'none';
+  // Gap between the bezel and a stone's cup (small stones on the middle or
+  // outer line sit further away than the big ones).
+  const cupGap = (st) => st.innerOff - w - P.bezelWall;
+  const legs = P.legsMode;
   const legAt = [];
   if (legs === 'all') stones.forEach((st) => legAt.push(st));
   if (legs === 'cardinal') stones.forEach((st, i) => { if (cardinalIdx.has(i)) legAt.push(st); });
+  if (legs === 'auto') stones.forEach((st) => { if (cupGap(st) > 0.12) legAt.push(st); });
   const armH = 0.4;
   const armTop = haloGirdleY - 0.2;      // just under the stones' girdle
   for (const st of legAt) {
     const { p, n } = ellipsePoint(a, b, st.t, 0);
     const start = P.bezelWall - 0.15;    // inside the bezel wall
-    const end = d0 + st.gw * 0.15;       // into the halo cup body
+    const end = st.innerOff + st.gw * 0.15; // into the halo cup body
     const len = end - start;
     const g = new RoundedBoxGeometry(len, armH, P.legWidth, 2, Math.min(0.12, P.legWidth * 0.3, armH * 0.3));
     g.deleteAttribute('uv');
@@ -548,7 +582,7 @@ export function buildRing(P, materials) {
     bottomY: band.bottomY,
     focusY: ySeat + P.stoneDepth * 0.5,
     width: P.bandWidth,
-    info: { haloStoneSize: D, headWidth: 2 * maxX, headLength: headL, innerDiameter: 2 * R },
+    info: { haloStoneSize: D, haloSmallSize: D * Math.min(...sizeF.map((f, i) => (cardinalIdx.has(i) ? f / cs : f))), headWidth: 2 * maxX, headLength: headL, innerDiameter: 2 * R },
   };
 }
 

@@ -103,7 +103,8 @@ function updateSummary(info) {
   const card = state.cardinalShape === 'round' && state.cardinalScale === 1 ? '' : ` · ${shape} cardinals`;
   document.getElementById('summary').textContent =
     `${state.stoneWidth.toFixed(1)} × ${state.stoneLength.toFixed(1)} mm rose cut · ` +
-    `${Math.round(state.haloCount)} × ${info.haloStoneSize.toFixed(2)} mm stones${card} · ` +
+    `${Math.round(state.haloCount)} × ${info.haloStoneSize.toFixed(2)}` +
+    `${state.haloPattern !== 'uniform' && state.smallRatio < 1 ? ` / ${info.haloSmallSize.toFixed(2)}` : ''} mm stones${card} · ` +
     `head ${info.headWidth.toFixed(1)} × ${info.headLength.toFixed(1)} mm · EU ${state.ringSizeEU}`;
 }
 
@@ -143,6 +144,7 @@ const actions = {
   presetA: () => { Object.assign(state, PRESETS.A); applyAll(); toast('Ring A'); },
   presetB: () => { Object.assign(state, PRESETS.B); applyAll(); toast('Ring B'); },
   presetC: () => { Object.assign(state, PRESETS.C); applyAll(); toast('Ring C'); },
+  presetD: () => { Object.assign(state, PRESETS.D); applyAll(); toast('Ring D'); },
   viewTop: () => studio.setView('top'),
   view34: () => studio.setView('view34'),
   viewSide: () => studio.setView('side'),
