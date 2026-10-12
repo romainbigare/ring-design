@@ -155,38 +155,35 @@ export class Studio {
 
   // ---------------------------------------------------------------- backdrop
   _buildBackdrop() {
-    // Seamless "infinity cove": floor that bends up into a back wall.
-    const W = 1600, depthFront = 700, depthBack = 500, radius = 260, height = 900;
-    const prof = [];
-    const steps = 48;
-    prof.push(new THREE.Vector2(depthFront, 0));
-    prof.push(new THREE.Vector2(-depthBack + radius, 0));
-    for (let i = 1; i <= steps; i++) {
-      const a = (i / steps) * Math.PI / 2;
-      prof.push(new THREE.Vector2(-depthBack + radius - Math.sin(a) * radius, radius - Math.cos(a) * radius));
+    // Round photo "bowl": a floor that curves up into a wall all around the
+    // ring, so there is no edge to see from any angle.
+    const floorR = 240, curveR = 220, wallH = 900;
+    const prof = [new THREE.Vector2(0, 0)];
+    for (let i = 1; i <= 24; i++) prof.push(new THREE.Vector2((floorR * i) / 24, 0));
+    for (let i = 1; i <= 40; i++) {
+      const a = (i / 40) * Math.PI / 2;
+      prof.push(new THREE.Vector2(floorR + Math.sin(a) * curveR, curveR - Math.cos(a) * curveR));
     }
-    prof.push(new THREE.Vector2(-depthBack, height));
-    const xs = 2;
-    const verts = [], uvs = [], idx = [];
-    for (let j = 0; j < prof.length; j++) {
-      for (let i = 0; i < xs; i++) {
-        const x = -W / 2 + (i / (xs - 1)) * W;
-        verts.push(x, prof[j].y, prof[j].x);
-        uvs.push(x / 40, (prof[j].x - prof[j].y) / 40);
-      }
+    for (let i = 1; i <= 8; i++) prof.push(new THREE.Vector2(floorR + curveR, curveR + (wallH * i) / 8));
+    const g = new THREE.LatheGeometry(prof, 160);
+    // Planar texture coordinates (no stretching on the floor) and a soft
+    // light fall-off towards the walls, like a real studio sweep.
+    const pos = g.attributes.position;
+    const uvs = new Float32Array(pos.count * 2);
+    const cols = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const r = Math.hypot(x, z);
+      uvs[i * 2] = x / 40;
+      uvs[i * 2 + 1] = (z + Math.sign(z) * y) / 40;
+      const k = 1 - 0.3 * THREE.MathUtils.smoothstep(r, 40, floorR + curveR) - 0.25 * THREE.MathUtils.smoothstep(y, 0, 500);
+      cols.set([k, k, k], i * 3);
     }
-    for (let j = 0; j < prof.length - 1; j++) {
-      const a = j * xs, b = (j + 1) * xs;
-      idx.push(a, a + 1, b, a + 1, b + 1, b);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
+    g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
 
     this.velvetTex = makeVelvetTexture();
-    this.backdropMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0 });
+    this.backdropMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0, vertexColors: true, side: THREE.DoubleSide });
     this.backdrop = new THREE.Mesh(g, this.backdropMat);
     this.backdrop.receiveShadow = true;
     this.scene.add(this.backdrop);

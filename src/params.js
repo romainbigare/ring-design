@@ -37,9 +37,9 @@ export const DEFAULTS = {
   cardinalScale: 1.0,
   tipLength: 0.8,           // length of the gold point ('pointed' setting)
 
-  // Connection legs between centre bezel and halo
+  // Connection arms between centre bezel and halo
   legsMode: 'auto',         // auto | none | cardinal | all
-  legWidth: 0.5,
+  legWidth: 0.4,
 
   // Gallery
   galleryHeight: 1.2,       // height of the head above the band
@@ -137,14 +137,14 @@ export const SCHEMA = [
     ],
   },
   {
-    folder: 'Connection legs', open: false, items: [
-      { key: 'legsMode', label: 'Legs', type: 'select', options: [
-        { value: 'auto', label: 'Auto (when far)' },
+    folder: 'Connection arms', open: false, items: [
+      { key: 'legsMode', label: 'Arms', type: 'select', options: [
+        { value: 'auto', label: 'Auto (when not touching)' },
         { value: 'none', label: 'None' },
         { value: 'cardinal', label: 'Cardinal only' },
         { value: 'all', label: 'Every stone' },
       ] },
-      { key: 'legWidth', label: 'Leg width', type: 'range', min: 0.25, max: 1.0, step: 0.01, unit: 'mm' },
+      { key: 'legWidth', label: 'Arm width', type: 'range', min: 0.25, max: 1.0, step: 0.01, unit: 'mm' },
       { key: 'galleryHeight', label: 'Head height', type: 'range', min: 0.6, max: 3, step: 0.05, unit: 'mm' },
     ],
   },

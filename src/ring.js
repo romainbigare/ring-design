@@ -1,5 +1,5 @@
 // Parametric ring geometry: band, centre bezel, entourage cups, milgrain,
-// connection legs and under-gallery. Units: millimetres.
+// connection arms and under-gallery. Units: millimetres.
 // Axes: finger axis = Z, band in the XY plane, head on top (+Y).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -459,7 +459,7 @@ export function buildRing(P, materials) {
     mesh.rotation.y = rotY;
     mesh.castShadow = true;
     group.add(mesh);
-    stones.push({ t, n, p });
+    stones.push({ t, n, p, gw: isCard ? cw : D });
 
     const gw = isCard ? cw : D;
     const g = gem.girdle ?? 0.03 * gw;
@@ -483,28 +483,28 @@ export function buildRing(P, materials) {
     }
   }
 
-  // ---- connection legs ----------------------------------------------------
+  // ---- connection arms ----------------------------------------------------
+  // Small gold arms from the centre bezel to each halo setting. In 'auto'
+  // mode they appear as soon as the halo no longer touches the bezel.
   let legs = P.legsMode;
-  if (legs === 'auto') legs = P.haloGap > 0.3 ? 'all' : 'none';
+  if (legs === 'auto') legs = P.haloGap > 0.12 ? 'all' : 'none';
   const legAt = [];
-  if (legs === 'all') stones.forEach((s) => legAt.push(s.t));
-  if (legs === 'cardinal') legAt.push(0, Math.PI / 2, Math.PI, Math.PI * 1.5);
-  if (legAt.length) {
-    const len = P.haloGap + 0.3;
-    const h = 0.45;
-    const legGeo = new RoundedBoxGeometry(len, h, P.legWidth, 2, Math.min(0.12, P.legWidth * 0.3, h * 0.3));
-    legGeo.deleteAttribute('uv');
-    for (const t of legAt) {
-      const { p, n } = ellipsePoint(a, b, t, 0);
-      const mid = P.bezelWall - 0.15 + len / 2;
-      const g = legGeo.clone();
-      const m = new THREE.Matrix4()
-        .makeRotationY(Math.atan2(n.x, n.y) - Math.PI / 2)
-        .setPosition(p.x + n.x * mid, ySeat - 0.05, p.y + n.y * mid);
-      g.applyMatrix4(m);
-      goldGeoms.push(g);
-    }
-    legGeo.dispose();
+  if (legs === 'all') stones.forEach((st) => legAt.push(st));
+  if (legs === 'cardinal') stones.forEach((st, i) => { if (cardinalIdx.has(i)) legAt.push(st); });
+  const armH = 0.4;
+  const armTop = haloGirdleY - 0.2;      // just under the stones' girdle
+  for (const st of legAt) {
+    const { p, n } = ellipsePoint(a, b, st.t, 0);
+    const start = P.bezelWall - 0.15;    // inside the bezel wall
+    const end = d0 + st.gw * 0.15;       // into the halo cup body
+    const len = end - start;
+    const g = new RoundedBoxGeometry(len, armH, P.legWidth, 2, Math.min(0.12, P.legWidth * 0.3, armH * 0.3));
+    g.deleteAttribute('uv');
+    const mid = start + len / 2;
+    g.applyMatrix4(new THREE.Matrix4()
+      .makeRotationY(Math.atan2(n.x, n.y) - Math.PI / 2)
+      .setPosition(p.x + n.x * mid, armTop - armH / 2, p.y + n.y * mid));
+    goldGeoms.push(g);
   }
 
   // ---- under-gallery rail ------------------------------------------------
