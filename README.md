@@ -24,17 +24,22 @@ does not work, because browsers block ES modules on `file://` links.)
 
 ## Presets
 
-The photo shows two designs. They are the presets in the "Design" box:
+The presets are in the "Design" box:
 
-- **Ring A**: 12 halo stones, a little more space between the stones.
-- **Ring B**: 16 halo stones, a tight and full entourage.
+- **Ring A** (first photo, top ring): 12 halo stones, a little more space between the stones.
+- **Ring B** (first photo, bottom ring): 16 halo stones, a tight and full entourage.
+- **Ring C** (second photo): ribbed gold collars, and the four cardinal collars
+  are drawn out into points (the stones stay round).
 
 ## Parameters
 
-- **Centre diamond**: width, height, depth, number of rose facet rings, bezel wall.
+- **Centre diamond**: width, height, depth, number of rose facet rings
+  (2 = classic Dutch rose with 24 facets, 3 = 60 facets), gold glow in the stone, bezel wall.
 - **Entourage**: number of stones, auto size, stone size, space between stones,
-  distance to the centre, setting wall, milgrain beads and bead size.
-- **Cardinal stones** (north, south, east, west): shape (round, pear, marquise) and size.
+  distance to the centre, setting collar width, ribbed collar and rib depth,
+  milgrain beads (around the stone, on the outer edge, or both) and bead size.
+- **Cardinal stones** (north, south, east, west): round, round with a pointy
+  collar, pear or marquise; size; point length.
 - **Connection legs**: legs mode, leg width, head height.
 - **Band**: ring size (EU), metal (yellow, rose, white gold, platinum), width,
   thickness, taper, profile (comfort, round, flat).
@@ -55,6 +60,10 @@ so 49.75 mm of circumference gives an inner diameter of about **15.84 mm**
 - The diamonds use ray tracing inside each convex stone: light enters, bends
   (refraction), bounces on the facets, and leaves. Each colour bends a little
   differently (dispersion), which creates the coloured "fire".
-- The lighting comes from a procedural studio environment made in code, so no
-  image files are needed.
-- All design values are stored in the share link, so you can send a design to anyone.
+- The rose cut is built facet by facet: a star of 6 triangles at the top, then
+  rings of triangles that double each time (6 → 12 → 24), on a flat base.
+- The lighting comes from a procedural studio environment made in code (soft
+  boxes, strip lights, small spots, black flags), so no image files are needed.
+- The floor shadow is a real contact shadow: the ring is seen from below,
+  blurred, and laid on the dark slate (or white, velvet) backdrop.
+- Every value you change is stored in the share link, so you can send a design to anyone.
