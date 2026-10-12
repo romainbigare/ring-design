@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ring Studio</title>
+  <meta name="description" content="Parametric engagement ring designer: oval rose cut diamond with a diamond entourage, rendered in a realistic studio.">
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/build/three.module.min.js",
+      "three/addons/": "./vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <header id="title">
+    <h1>Ring Studio</h1>
+    <p id="summary"></p>
+  </header>
+  <div id="toolbar"></div>
+  <aside id="panel"></aside>
+  <div id="loading">Polishing the diamonds…</div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
