@@ -7,11 +7,14 @@ import { createDiamondMaterial, setDiamondOptions } from './gems.js';
 import { createPanel, toast } from './ui.js';
 
 // ---------------------------------------------------------------- state
-const state = { ...DEFAULTS, ...readHash() };
+// The design lives in the URL query (?stoneWidth=9.2&haloCount=12...), so a
+// link opens the same ring. Old links with the values after '#' still work.
+const state = { ...DEFAULTS, ...readUrl() };
 
-function readHash() {
+function readUrl() {
   const out = {};
   const params = new URLSearchParams(location.hash.slice(1));
+  for (const [k, v] of new URLSearchParams(location.search)) params.set(k, v);
   for (const [k, v] of params) {
     if (!(k in DEFAULTS)) continue;
     const d = DEFAULTS[k];
@@ -22,16 +25,29 @@ function readHash() {
   return out;
 }
 
-function writeHash() {
+const encode = (v) => (typeof v === 'boolean' ? (v ? '1' : '0')
+  : typeof v === 'number' ? String(Number(v.toFixed(4))) : String(v));
+
+// all = true: every value (for shared links, so they stay valid if the
+// defaults change later). Otherwise only the values that differ.
+function designParams(all = false) {
   const params = new URLSearchParams();
   for (const k of Object.keys(DEFAULTS)) {
-    if (state[k] === DEFAULTS[k]) continue;
+    if (!all && state[k] === DEFAULTS[k]) continue;
     if (k === 'haloStoneSize' && state.haloAutoSize) continue; // computed value
-    const v = state[k];
-    params.set(k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
+    params.set(k, encode(state[k]));
   }
-  const hash = params.toString();
-  history.replaceState(null, '', hash ? `#${hash}` : location.pathname + location.search);
+  return params.toString();
+}
+
+// Keep the address bar in sync with the design (short form).
+function writeUrl() {
+  const q = designParams();
+  history.replaceState(null, '', location.pathname + (q ? `?${q}` : ''));
+}
+
+function shareUrl() {
+  return `${location.origin}${location.pathname}?${designParams(true)}`;
 }
 
 // ---------------------------------------------------------------- scene
@@ -109,7 +125,7 @@ function onChange(key) {
   else geometryDirty = true;
   if (key === 'metal') geometryDirty = true; // summary only, cheap enough
   clearTimeout(hashTimer);
-  hashTimer = setTimeout(writeHash, 300);
+  hashTimer = setTimeout(writeUrl, 300);
 }
 
 function applyAll() {
@@ -120,7 +136,7 @@ function applyAll() {
   studio.setAutoRotate(state.autoRotate);
   rebuild();
   panel.refresh();
-  writeHash();
+  writeUrl();
 }
 
 const actions = {
@@ -133,12 +149,22 @@ const actions = {
   viewFront: () => studio.setView('front'),
   screenshot: () => studio.screenshot(`ring-${Date.now()}.png`),
   share: async () => {
-    writeHash();
+    writeUrl();
+    const url = shareUrl();
+    // Phones: native share sheet. Elsewhere: copy to the clipboard.
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ title: 'Ring design', url });
+        return;
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // user closed the sheet
+      }
+    }
     try {
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(url);
       toast('Link copied');
     } catch {
-      toast('Copy the address bar to share');
+      window.prompt('Copy this link to share the design:', url);
     }
   },
   reset: () => { Object.assign(state, DEFAULTS); applyAll(); toast('Reset'); },
@@ -161,6 +187,18 @@ function updateInset() {
 new ResizeObserver(updateInset).observe(panelEl);
 window.addEventListener('resize', updateInset);
 
+// Short hint that the ring can be turned (the only way to change the view on phones).
+function showHint() {
+  const el = document.getElementById('hint');
+  if (!el) return;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  el.querySelector('span').textContent = touch ? 'Drag to rotate · pinch to zoom' : 'Drag to rotate · scroll to zoom';
+  const hide = () => el.classList.remove('show');
+  setTimeout(() => el.classList.add('show'), 600);
+  setTimeout(hide, 5000);
+  studio.renderer.domElement.addEventListener('pointerdown', hide, { once: true });
+}
+
 // ---------------------------------------------------------------- loop
 applyAll();
 studio.setView('view34');
@@ -177,6 +215,7 @@ function frame() {
   if (first) {
     first = false;
     document.getElementById('loading').classList.add('hidden');
+    showHint();
   }
   requestAnimationFrame(frame);
 }

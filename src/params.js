@@ -89,9 +89,9 @@ export const SCHEMA = [
   {
     folder: 'Design', open: true, items: [
       { type: 'buttons', items: [
-        { label: 'Ring A (12 stones)', action: 'presetA' },
-        { label: 'Ring B (16 stones)', action: 'presetB' },
-        { label: 'Ring C (ribbed, pointy)', action: 'presetC' },
+        { label: 'Ring A', action: 'presetA' },   // photo 1, top: 12 stones
+        { label: 'Ring B', action: 'presetB' },   // photo 1, bottom: 16 stones
+        { label: 'Ring C', action: 'presetC' },   // photo 2: ribbed, pointy collars
       ] },
     ],
   },
@@ -180,12 +180,13 @@ export const SCHEMA = [
 ];
 
 // Actions shown as a toolbar (outside folders).
+// `view: true` buttons are camera presets; they are hidden on phones,
+// where you simply drag to rotate.
 export const TOOLBAR = [
-  { label: 'Top', action: 'viewTop' },
-  { label: '3/4', action: 'view34' },
-  { label: 'Side', action: 'viewSide' },
-  { label: 'Hand', action: 'viewFront' },
+  { label: 'Top', action: 'viewTop', view: true },
+  { label: '3/4', action: 'view34', view: true },
+  { label: 'Side', action: 'viewSide', view: true },
+  { label: 'Hand', action: 'viewFront', view: true },
   { label: 'Photo', action: 'screenshot' },
-  { label: 'Share link', action: 'share' },
   { label: 'Reset', action: 'reset' },
 ];

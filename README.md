@@ -46,7 +46,9 @@ The presets are in the "Design" box:
 - **Studio**: backdrop, exposure, sparkle glow, fire (dispersion), light bounces, turn table.
 
 Tips: double-click a slider name to reset it. Click on a number to type your own value.
-Use the buttons at the bottom to change the view, take a photo, copy a share link, or reset.
+Drag the ring to turn it, and pinch or scroll to zoom. On a computer, the buttons at
+the bottom give quick views (top, 3/4, side, hand). The **Share** button in the
+panel gives a link with the full design in it (on a phone it opens the share menu).
 
 ### Ring size
 
@@ -66,4 +68,5 @@ so 49.75 mm of circumference gives an inner diameter of about **15.84 mm**
   boxes, strip lights, small spots, black flags), so no image files are needed.
 - The floor shadow is a real contact shadow: the ring is seen from below,
   blurred, and laid on the dark slate (or white, velvet) backdrop.
-- Every value you change is stored in the share link, so you can send a design to anyone.
+- The design is stored in the page address as URL parameters (for example
+  `?haloCount=12&cardinalShape=pointed`), so a link always opens the same ring.

@@ -64,10 +64,16 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
 
   // ---- header / handle
   const collapseBtn = h('button', { class: 'panel-collapse', type: 'button', 'aria-label': 'Collapse panel' });
+  const shareBtn = h('button', { class: 'panel-share', type: 'button', 'aria-label': 'Share this design' });
+  shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" ' +
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>' +
+    '<span>Share</span>';
+  shareBtn.addEventListener('click', (e) => { e.stopPropagation(); action('share'); });
   const head = h('div', { class: 'panel-head' }, [
     h('span', { class: 'panel-grabber', 'aria-hidden': 'true' }),
     h('span', { class: 'panel-title', text: 'Design' }),
-    collapseBtn,
+    h('span', { class: 'panel-head-actions' }, [shareBtn, collapseBtn]),
   ]);
   const body = h('div', { class: 'panel-body' });
   panelEl.append(head, body);
@@ -251,7 +257,7 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
   // ---- toolbar
   toolbarEl.textContent = '';
   for (const t of toolbar) {
-    const b = h('button', { type: 'button', class: 'pill', text: t.label, dataset: { action: t.action } });
+    const b = h('button', { type: 'button', class: t.view ? 'pill view' : 'pill', text: t.label, dataset: { action: t.action } });
     b.addEventListener('click', () => action(t.action));
     toolbarEl.append(b);
   }
