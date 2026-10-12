@@ -8,9 +8,9 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const BACKDROPS = {
-  studio: { floor: 0xf1efec, sky: 0xdedad5, walls: 0.32, floorEnv: 0.9, velvet: false, bloomThreshold: 1.6 },
-  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, bloomThreshold: 1.1 },
-  dark:   { floor: 0x2a2a2c, sky: 0x1c1c1e, walls: 0.06, floorEnv: 0.08, velvet: false, bloomThreshold: 1.2 },
+  studio: { floor: 0xf1efec, sky: 0xdedad5, walls: 0.32, floorEnv: 0.9, velvet: false, backdropEnv: 0.3, bloomThreshold: 3.0 },
+  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, backdropEnv: 1.0, bloomThreshold: 2.2 },
+  dark:   { floor: 0x2a2a2c, sky: 0x1c1c1e, walls: 0.06, floorEnv: 0.08, velvet: false, backdropEnv: 0.6, bloomThreshold: 2.6 },
 };
 
 export class Studio {
@@ -22,16 +22,16 @@ export class Studio {
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.AgXToneMapping;
+    renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.VSMShadowMap;
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(28, 1, 1, 3000);
-    this.camera.position.set(42, 40, 62);
+    this.camera.position.set(30, 30, 46);
 
     const controls = new OrbitControls(this.camera, renderer.domElement);
     controls.enableDamping = true;
@@ -88,8 +88,14 @@ export class Studio {
       env.add(m);
       return m;
     };
-    // Big overhead soft box
-    panel(90, 70, 4.5, new THREE.Vector3(0, 88, 0));
+    // Two overhead soft boxes, tilted; directly above stays dark (like the
+    // camera hole in a light tent) so the stones keep contrast in the top view.
+    panel(46, 80, 3.2, new THREE.Vector3(-52, 76, 0));
+    panel(46, 80, 2.6, new THREE.Vector3(52, 76, 0));
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(30, 48), new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.DoubleSide }));
+    hole.position.set(0, 89, 0);
+    hole.rotation.x = Math.PI / 2;
+    env.add(hole);
     // Key soft box front-left and fill front-right
     panel(46, 46, 7.0, new THREE.Vector3(-55, 40, 60), 0.5);
     panel(40, 40, 3.0, new THREE.Vector3(62, 30, 50));
@@ -207,12 +213,13 @@ export class Studio {
     const sun = new THREE.DirectionalLight(0xffffff, 1.2);
     sun.position.set(-30, 90, 40);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(1024, 1024);
     const s = sun.shadow.camera;
     s.left = -30; s.right = 30; s.top = 30; s.bottom = -30; s.near = 10; s.far = 250;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.02;
-    sun.shadow.radius = 6;
+    sun.shadow.radius = 14;
+    sun.shadow.blurSamples = 20;
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
@@ -228,9 +235,19 @@ export class Studio {
     this.composer = composer;
   }
 
+  // Shift the picture left so the ring is centred in the space next to the panel.
+  setPanelInset(px) {
+    if (Math.abs((this._inset || 0) - px) < 1) return;
+    this._inset = px;
+    this._resize();
+  }
+
   _resize() {
     const w = this.container.clientWidth || window.innerWidth;
     const h = this.container.clientHeight || window.innerHeight;
+    const inset = this._inset || 0;
+    if (inset > 0) this.camera.setViewOffset(w, h, inset / 2, 0, w, h);
+    else this.camera.clearViewOffset();
     this.renderer.setSize(w, h);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
@@ -258,6 +275,7 @@ export class Studio {
       m.roughness = 0.92;
       m.sheen = 0;
     }
+    m.envMapIntensity = bd.backdropEnv;
     m.needsUpdate = true;
     this.scene.background = new THREE.Color(bd.sky);
     this.sun.intensity = bd.velvet ? 0.4 : 1.2;
@@ -293,10 +311,10 @@ export class Studio {
     const head = new THREE.Vector3(0, this.headY ?? 10, 0);
     const mid = this.focus.clone();
     const views = {
-      top: { pos: new THREE.Vector3(0, head.y + 62, 0.001), target: head },
-      view34: { pos: new THREE.Vector3(38, mid.y + 38, 58), target: mid },
-      side: { pos: new THREE.Vector3(0, mid.y + 4, 82), target: mid },
-      front: { pos: new THREE.Vector3(0, head.y + 48, 40), target: head },
+      top: { pos: new THREE.Vector3(0, head.y + 44, 0.001), target: head },
+      view34: { pos: new THREE.Vector3(27, mid.y + 27, 42), target: mid },
+      side: { pos: new THREE.Vector3(0, mid.y + 3, 60), target: mid },
+      front: { pos: new THREE.Vector3(0, head.y + 34, 28), target: head },
     };
     const v = views[name] || views.view34;
     this._tween = {

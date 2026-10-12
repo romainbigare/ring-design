@@ -17,6 +17,7 @@ export const DEFAULTS = {
   roseRings: 3,
   bezelWall: 0.35,
   bezelLip: 0.12,
+  stoneWarmth: 0.45,        // how much the gold cup behind the stone shows through
 
   // Entourage (halo)
   haloCount: 16,
@@ -43,7 +44,7 @@ export const DEFAULTS = {
   scene: 'studio',          // studio | velvet | dark
   dispersion: 0.012,
   bounces: 5,
-  bloom: 0.35,
+  bloom: 0.2,
   exposure: 1.0,
   autoRotate: false,
 };
@@ -86,6 +87,7 @@ export const SCHEMA = [
       { key: 'stoneLength', label: 'Height', type: 'range', min: 4, max: 9, step: 0.1, unit: 'mm' },
       { key: 'stoneDepth', label: 'Depth', type: 'range', min: 0.8, max: 3, step: 0.01, unit: 'mm' },
       { key: 'roseRings', label: 'Rose facet rings', type: 'range', min: 2, max: 4, step: 1 },
+      { key: 'stoneWarmth', label: 'Gold glow in stone', type: 'range', min: 0, max: 1, step: 0.01 },
       { key: 'bezelWall', label: 'Bezel wall', type: 'range', min: 0.2, max: 0.8, step: 0.01, unit: 'mm' },
     ],
   },

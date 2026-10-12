@@ -59,10 +59,14 @@ function applyMaterials() {
   gold.color.copy(metalColor());
   gold.roughness = m.roughness;
   for (const k of ['center', 'halo', 'cardinal']) {
+    // Light reflected by the polished cup behind the stone: mix of neutral and metal colour.
+    const warmth = k === 'center' ? state.stoneWarmth : 0.7;
+    const tint = new THREE.Color(0.55, 0.55, 0.55).lerp(metalColor(), warmth);
     setDiamondOptions(materials[k], {
       dispersion: state.dispersion,
       bounces: Math.round(state.bounces),
-      backTint: metalColor(),
+      backTint: tint,
+      goldAmbient: 0.3 * warmth,
     });
   }
   studio.needsRender = true;
@@ -88,7 +92,7 @@ function updateSummary(info) {
 }
 
 // ---------------------------------------------------------------- panel
-const MATERIAL_KEYS = new Set(['metal', 'dispersion', 'bounces']);
+const MATERIAL_KEYS = new Set(['metal', 'dispersion', 'bounces', 'stoneWarmth']);
 const STUDIO_KEYS = {
   scene: () => studio.setBackdrop(state.scene),
   exposure: () => studio.setExposure(state.exposure),
@@ -145,6 +149,16 @@ const panel = createPanel(
   SCHEMA, TOOLBAR, state,
   { onChange, onAction: (a) => actions[a]?.() },
 );
+
+// Keep the ring centred in the free space next to the desktop side panel.
+const panelEl = document.getElementById('panel');
+function updateInset() {
+  const r = panelEl.getBoundingClientRect();
+  const side = r.left > window.innerWidth / 2 && r.height > 160;
+  studio.setPanelInset(side ? window.innerWidth - r.left : 0);
+}
+new ResizeObserver(updateInset).observe(panelEl);
+window.addEventListener('resize', updateInset);
 
 // ---------------------------------------------------------------- loop
 applyAll();
