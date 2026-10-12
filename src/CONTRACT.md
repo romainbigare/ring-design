@@ -36,3 +36,16 @@ Meshes using the material may have rotation, translation and **uniform** scale.
 createPanel(rootEl, schema, state, onChange) -> { refresh() }
 ```
 See schema in src/main.js.
+
+## assets/hand/ (hand model, built offline by tools/build_hand.py)
+
+`assets/hand/hand.glb` + `assets/hand/hand.json`. Source: MakeHuman CC0 assets.
+- Units **millimetres**. A **left** hand + forearm, palm down (-Y), back of the hand up (+Y).
+- The ring finger's proximal phalanx (where a ring is worn) lies on the **Z axis**:
+  the ring position is the **origin**, fingertips toward **-Z**, wrist/forearm toward **+Z**.
+- Scaled so the ring finger cross-section at z = 0 has a perimeter of **49.75 mm**
+  (EU size 49.75). The app scales the hand uniformly for other ring sizes.
+- Pose: relaxed hand resting on a flat table (lowest point = table contact).
+- Primitives/materials: `skin` (baseColor texture, optional normal map) and `nails`.
+- hand.json: { "ringCircumference": 49.75, "minY": <lowest y>, "handLength": <mm>,
+  "forearmEndZ": <z of the cut end of the forearm>, "source": "...", "license": "CC0" }
