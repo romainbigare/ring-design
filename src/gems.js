@@ -91,50 +91,103 @@ function ensureCCW(poly) {
 // Rose cut
 // ---------------------------------------------------------------------------
 
-// Point counts per ring (apex excluded); the last ring is the top of the girdle.
-// Chosen so that the facet-plane count stays <= 96.
+// Classic rose cut layout: an apex with a star of triangles, then rings that
+// double their point count (6 -> 12 -> 24). Each ring has one point aligned
+// with every point of the ring above and one in between, which gives the
+// typical rose pattern of triangular facets (the Dutch rose is [6, 12]).
+// The last ring is the top of the girdle.
 const ROSE_RINGS = {
-  1: [12],
   2: [6, 12],
   3: [6, 12, 24],
   4: [3, 6, 12, 24],
 };
+// Radius of each ring (fraction of the girdle radius), chosen so the facets
+// have similar sizes.
+const ROSE_RADII = {
+  2: [0.5, 1],
+  3: [0.3, 0.64, 1],
+  4: [0.16, 0.34, 0.66, 1],
+};
 
-export function buildRoseCut({ width, length, depth, girdle = 0.12, rings = 3 } = {}) {
-  rings = Math.max(1, Math.min(4, Math.round(rings)));
+export function buildRoseCut({ width, length, depth, girdle = 0.12, rings = 3, profile } = {}) {
+  rings = Math.max(2, Math.min(4, Math.round(rings)));
+  profile = profile ?? (rings === 4 ? 2.0 : 1.6); // dome shape; 4 rings needs >= 2 to stay convex
   const counts = ROSE_RINGS[rings];
+  const radii = ROSE_RADII[rings];
   const a = width / 2;
   const b = length / 2;
   girdle = Math.min(Math.max(girdle, 0.01), depth * 0.6);
   const dome = depth - girdle;
-  const profilePow = 1.7; // concave dome profile: h = g + dome * (1 - r^p)
 
-  const points = [new THREE.Vector3(0, depth, 0)];
-  let girdleRing = [];
-  let offset = 0;
-  for (let k = 1; k <= rings; k++) {
-    const n = counts[k - 1];
-    const r = k / rings;
-    const y = girdle + dome * (1 - Math.pow(r, profilePow));
-    const step = (Math.PI * 2) / n;
-    // alternate rotational offset by half a step on every ring
-    offset = (k % 2 === 0) ? step / 2 : 0;
+  // Points. The oval is an affine stretch of a round rose cut, which keeps
+  // planar facets planar and the stone convex.
+  const apex = new THREE.Vector3(0, depth, 0);
+  const ringPts = counts.map((n, k) => {
+    const r = radii[k];
+    const y = k === counts.length - 1 ? girdle : girdle + dome * (1 - Math.pow(r, profile));
     const ring = [];
     for (let i = 0; i < n; i++) {
-      const t = offset + i * step;
-      const p = new THREE.Vector3(a * r * Math.cos(t), y, b * r * Math.sin(t));
-      points.push(p);
-      ring.push(p);
+      const t = (i / n) * Math.PI * 2;
+      ring.push(new THREE.Vector3(a * r * Math.cos(t), y, b * r * Math.sin(t)));
     }
-    if (k === rings) girdleRing = ring;
-  }
-  // base ring at y = 0 (same outline)
-  for (const p of girdleRing) points.push(new THREE.Vector3(p.x, 0, p.z));
+    return ring;
+  });
 
-  const { geometry, planes } = hullToStone(points, 'rose cut');
-  const poly = ensureCCW(girdleRing.map((p) => new THREE.Vector2(p.x, p.z)));
+  const tris = [];
+  const first = ringPts[0];
+  for (let i = 0; i < first.length; i++) tris.push([apex, first[i], first[(i + 1) % first.length]]);
+  for (let k = 0; k < ringPts.length - 1; k++) {
+    const P = ringPts[k], Q = ringPts[k + 1], n = P.length, m = Q.length;
+    for (let i = 0; i < n; i++) {
+      const p0 = P[i], p1 = P[(i + 1) % n];
+      const q0 = Q[2 * i], q1 = Q[2 * i + 1], q2 = Q[(2 * i + 2) % m];
+      tris.push([p0, p1, q1]); // triangle pointing outward
+      tris.push([p0, q0, q1]); // the two half-kites on the outer ring
+      tris.push([p1, q1, q2]);
+    }
+  }
+  const G = ringPts[ringPts.length - 1];
+  const base = G.map((p) => new THREE.Vector3(p.x, 0, p.z));
+  for (let i = 0; i < G.length; i++) {
+    const j = (i + 1) % G.length;
+    tris.push([G[i], G[j], base[j]], [G[i], base[j], base[i]]);
+  }
+  for (let i = 1; i < base.length - 1; i++) tris.push([base[0], base[i], base[i + 1]]);
+
+  const { geometry, planes } = trianglesToStone(tris, new THREE.Vector3(0, depth * 0.4, 0), 'rose cut');
+  const poly = ensureCCW(G.map((p) => new THREE.Vector2(p.x, p.z)));
   const outline = resamplePolygon(poly, 64);
   return { geometry, planes, outline, height: depth };
+}
+
+// Explicit triangles -> flat-shaded geometry + merged facet planes, with a
+// convexity check (the shader needs a convex stone).
+function trianglesToStone(tris, centre, label) {
+  const pos = [], nor = [], planes = [];
+  const all = [];
+  for (const t of tris) for (const v of t) all.push(v);
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  for (let [p0, p1, p2] of tris) {
+    const n = ab.subVectors(p1, p0).cross(ac.subVectors(p2, p0)).normalize().clone();
+    if (n.dot(p0.clone().sub(centre)) < 0) { n.negate(); [p1, p2] = [p2, p1]; }
+    for (const v of [p0, p1, p2]) { pos.push(v.x, v.y, v.z); nor.push(n.x, n.y, n.z); }
+    const d = n.dot(p0);
+    if (!planes.some((pl) => Math.abs(pl.x - n.x) < 1e-4 && Math.abs(pl.y - n.y) < 1e-4 &&
+        Math.abs(pl.z - n.z) < 1e-4 && Math.abs(pl.w - d) < 1e-4)) {
+      planes.push(new THREE.Vector4(n.x, n.y, n.z, d));
+    }
+  }
+  let worst = 0;
+  for (const pl of planes) for (const v of all) worst = Math.max(worst, pl.x * v.x + pl.y * v.y + pl.z * v.z - pl.w);
+  if (worst > 1e-4) console.warn(`gems: ${label} is not convex (error ${worst.toFixed(5)} mm)`);
+  if (planes.length > MAX_PLANES) console.warn(`gems: ${label} has ${planes.length} planes (> ${MAX_PLANES})`);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData.convexError = worst;
+  return { geometry, planes };
 }
 
 // ---------------------------------------------------------------------------

@@ -87,7 +87,7 @@ export const SCHEMA = [
       { key: 'stoneWidth', label: 'Width', type: 'range', min: 6, max: 12, step: 0.1, unit: 'mm' },
       { key: 'stoneLength', label: 'Height', type: 'range', min: 4, max: 9, step: 0.1, unit: 'mm' },
       { key: 'stoneDepth', label: 'Depth', type: 'range', min: 0.8, max: 3, step: 0.01, unit: 'mm' },
-      { key: 'roseRings', label: 'Rose facet rings', type: 'range', min: 2, max: 4, step: 1 },
+      { key: 'roseRings', label: 'Rose facet rings', type: 'range', min: 2, max: 4, step: 1 }, // 2 = Dutch rose (24 facets)
       { key: 'stoneWarmth', label: 'Gold glow in stone', type: 'range', min: 0, max: 1, step: 0.01 },
       { key: 'bezelWall', label: 'Bezel wall', type: 'range', min: 0.2, max: 0.8, step: 0.01, unit: 'mm' },
     ],
