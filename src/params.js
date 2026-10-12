@@ -30,8 +30,9 @@ export const DEFAULTS = {
   milgrainSize: 0.13,
 
   // Cardinal stones (N, S, E, W)
-  cardinalShape: 'round',   // round | pear | marquise
+  cardinalShape: 'round',   // round | pointed | pear | marquise
   cardinalScale: 1.0,
+  tipLength: 0.8,           // length of the gold point ('pointed' setting)
 
   // Connection legs between centre bezel and halo
   legsMode: 'auto',         // auto | none | cardinal | all
@@ -107,10 +108,12 @@ export const SCHEMA = [
     folder: 'Cardinal stones', open: true, items: [
       { key: 'cardinalShape', label: 'Shape', type: 'select', options: [
         { value: 'round', label: 'Round' },
+        { value: 'pointed', label: 'Round, pointy setting' },
         { value: 'pear', label: 'Pear (pointy)' },
         { value: 'marquise', label: 'Marquise (pointy)' },
       ] },
       { key: 'cardinalScale', label: 'Size', type: 'range', min: 0.8, max: 2.2, step: 0.05, unit: '×' },
+      { key: 'tipLength', label: 'Point length', type: 'range', min: 0.2, max: 2.5, step: 0.05, unit: 'mm' },
     ],
   },
   {

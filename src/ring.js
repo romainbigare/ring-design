@@ -247,19 +247,71 @@ function buildBand(P, head) {
 }
 
 // ------------------------------------------------------------------ head
-function cupProfile({ wall, lip, yTop, yBot, inner, roundR = 0.05 }) {
+function cupProfile({ wall, lip, yTop, yBot, inner, roundR = 0.05, foot = wall * 0.55 }) {
   // Closed profile (outward offset o, y). Tapered outer wall, lip over the stone.
   const pts = [
     new THREE.Vector2(-lip, yTop - 0.04),
     new THREE.Vector2(-lip * 0.6, yTop),
     new THREE.Vector2(wall, yTop),
-    new THREE.Vector2(wall, yTop - (yTop - yBot) * 0.35),
-    new THREE.Vector2(wall * 0.55, yBot),
+    new THREE.Vector2(wall, yTop - (yTop - yBot) * 0.3),
+    new THREE.Vector2(foot, yBot),
     new THREE.Vector2(-inner, yBot),
     new THREE.Vector2(-inner, yBot + 0.12),
     new THREE.Vector2(0, yTop - 0.18),
   ];
   return roundCorners(pts, roundR, 3).map((p) => [p.x, p.y]);
+}
+
+// Gold point that extends a round cup outward along +Z (local): a rounded
+// ridge that narrows and slopes down to a point.
+// r = radius where it joins the cup wall, tipZ = distance of the point.
+function buildPointedTip(r, tipZ, y0, y1) {
+  const phi = Math.acos(Math.min(0.999, r / tipZ));
+  const zt = r * Math.cos(phi), ht = r * Math.sin(phi); // tangent point
+  const z0 = zt - 0.2;
+  const nZ = 24, nU = 16;
+  const ring = []; // cross-section loop: rounded top (u -1..1) then flat bottom
+  for (let k = 0; k <= nU; k++) ring.push(-1 + (2 * k) / nU);
+  const pos = [];
+  for (let i = 0; i <= nZ; i++) {
+    const f = i / nZ;
+    const z = z0 + (tipZ - z0) * f;
+    const hw = Math.max(0.01, ht * (tipZ - z) / (tipZ - zt));
+    const top = y1 - 0.22 * Math.pow(Math.max(0, (z - zt) / (tipZ - zt)), 1.3);
+    for (const u of ring) {
+      const dome = Math.pow(Math.max(0, 1 - Math.abs(u) ** 2.2), 0.45);
+      pos.push(u * hw, y0 + (top - y0) * (0.35 + 0.65 * dome), z);
+    }
+    pos.push(0, y0, z); // bottom centre closes the loop
+  }
+  const nR = ring.length + 1;
+  const idx = [];
+  for (let i = 0; i < nZ; i++) {
+    for (let j = 0; j < nR; j++) {
+      const j2 = (j + 1) % nR;
+      const a = i * nR + j, b = (i + 1) * nR + j, c = (i + 1) * nR + j2, d = i * nR + j2;
+      idx.push(a, d, b, b, d, c);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  // the top-centre vertex of the middle section must point up
+  if (g.attributes.normal.getY((nZ >> 1) * nR + (nU >> 1)) < 0) flipIndex(g);
+  return g;
+}
+
+// Closed outline (x, z) of a circle of radius r with a point at +Z.
+function pointedOutline(r, tipZ, count) {
+  const phi = Math.acos(Math.min(0.999, r / tipZ));
+  const pts = [new THREE.Vector2(0, tipZ)];
+  const segs = 64;
+  for (let k = 0; k <= segs; k++) {
+    const ang = phi + ((2 * Math.PI - 2 * phi) * k) / segs;
+    pts.push(new THREE.Vector2(r * Math.sin(ang), r * Math.cos(ang)));
+  }
+  return resampleClosed(pts, count);
 }
 
 function addMilgrain(list, outline, offset, y, beadR) {
@@ -324,7 +376,9 @@ export function buildRing(P, materials) {
   const roundGem = cachedGem(`b|round|${r3(D)}`, () => buildBrilliant({ shape: 'round', width: D, length: D, girdle: 0.03 * D }));
   const cw = D * cs;
   const cl = shape === 'pear' ? cw * 1.45 : shape === 'marquise' ? cw * 2.0 : cw;
-  const cardGem = cachedGem(`b|${shape}|${r3(cw)}|${r3(cl)}`, () => buildBrilliant({ shape, width: cw, length: cl, girdle: 0.03 * cw }));
+  const pointed = shape === 'pointed'; // round stone in a setting with a gold point
+  const gemShape = pointed ? 'round' : shape;
+  const cardGem = cachedGem(`b|${gemShape}|${r3(cw)}|${r3(cl)}`, () => buildBrilliant({ shape: gemShape, width: cw, length: cl, girdle: 0.03 * cw }));
   setDiamondPlanes(materials.halo, roundGem.planes);
   setDiamondPlanes(materials.cardinal, cardGem.planes);
 
@@ -341,6 +395,7 @@ export function buildRing(P, materials) {
   const beadR = P.milgrainSize / 2;
   let lowest = bezelBot;
   let maxX = a + P.bezelWall;
+  let maxZ = b + P.bezelWall;
   const stones = [];
 
   for (let i = 0; i < N; i++) {
@@ -369,16 +424,30 @@ export function buildRing(P, materials) {
     const yBot = haloGirdleY - gem.pavilionDepth - 0.12;
     lowest = Math.min(lowest, yBot);
     const outline = resampleClosed(gem.outline, 72);
-    const cup = sweepClosed(outline, cupProfile({ wall: w, lip: 0.05, yTop, yBot, inner: gw * 0.22, roundR: 0.04 }));
+    const cup = sweepClosed(outline, cupProfile({ wall: w, lip: 0.05, yTop, yBot, inner: gw * 0.22, roundR: 0.04, foot: -gw * 0.1 }));
     cup.applyMatrix4(m);
     goldGeoms.push(cup);
 
+    let beadPath = outline, beadOffset = w * 0.5;
+    let reach = 0; // outward reach of the setting beyond the stone outline
+    if (isCard && pointed) {
+      const r = gw / 2;
+      const tipZ = r + w + P.tipLength;
+      const tip = buildPointedTip(r + w * 0.5, tipZ, yTop - Math.min(0.45, (yTop - yBot) * 0.6), yTop);
+      tip.applyMatrix4(m);
+      goldGeoms.push(tip);
+      beadPath = pointedOutline(r + w * 0.5, tipZ - 0.12, 72);
+      beadOffset = 0;
+      reach = tipZ - r;
+    }
     if (P.milgrain) {
       const local = [];
-      addMilgrain(local, outline, w * 0.5, yTop + beadR * 0.35, beadR);
+      addMilgrain(local, beadPath, beadOffset, yTop + beadR * 0.35, beadR);
       for (const v of local) beads.push(v.applyMatrix4(m));
     }
     for (const q of gem.outline) maxX = Math.max(maxX, Math.abs(cx + q.x * Math.cos(rotY) + q.y * Math.sin(rotY)) + w);
+    maxX = Math.max(maxX, Math.abs(cx + n.x * (gw / 2 + reach)));
+    maxZ = Math.max(maxZ, Math.abs(cz + n.y * (gw / 2 + reach)) + (isCard ? 0 : w), Math.abs(cz) + gw / 2 + w);
   }
 
   // ---- connection legs ----------------------------------------------------
@@ -440,7 +509,7 @@ export function buildRing(P, materials) {
     group.add(inst);
   }
 
-  const headL = 2 * (b + d0 + Math.max(D, cardGem ? cl : D) + w);
+  const headL = 2 * maxZ;
   return {
     group,
     bottomY: band.bottomY,

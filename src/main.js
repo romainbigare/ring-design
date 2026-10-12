@@ -83,7 +83,7 @@ function rebuild() {
 }
 
 function updateSummary(info) {
-  const shape = { round: 'round', pear: 'pear', marquise: 'marquise' }[state.cardinalShape];
+  const shape = { round: 'round', pointed: 'pointy-set', pear: 'pear', marquise: 'marquise' }[state.cardinalShape];
   const card = state.cardinalShape === 'round' && state.cardinalScale === 1 ? '' : ` · ${shape} cardinals`;
   document.getElementById('summary').textContent =
     `${state.stoneWidth.toFixed(1)} × ${state.stoneLength.toFixed(1)} mm rose cut · ` +

@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const BACKDROPS = {
   studio: { floor: 0xf1efec, sky: 0xdedad5, walls: 0.32, floorEnv: 0.9, velvet: false, backdropEnv: 0.3, bloomThreshold: 3.0 },
-  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, backdropEnv: 1.0, bloomThreshold: 2.2 },
+  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, backdropEnv: 1.0, bloomThreshold: 3.2 },
   dark:   { floor: 0x2a2a2c, sky: 0x1c1c1e, walls: 0.06, floorEnv: 0.08, velvet: false, backdropEnv: 0.6, bloomThreshold: 2.6 },
 };
 
@@ -289,7 +289,7 @@ export class Studio {
   setAutoRotate(on) { this.controls.autoRotate = on; this.needsRender = true; }
 
   // The ring stands on its band. bottomY = lowest point, focusY = head centre.
-  placeRing(group, { bottomY, focusY, width }) {
+  placeRing(group, { bottomY, focusY, width, info }) {
     this.ringRoot.clear();
     this.ringRoot.add(group);
     this.floorY = bottomY - 0.02;
@@ -303,18 +303,20 @@ export class Studio {
     }
     this.focus.copy(newFocus);
     this.headY = focusY;
+    this.fit = Math.max(1, (info?.headWidth || 14) / 14.5, (info?.headLength || 11) / 11.5);
     this.sun.target.position.set(0, this.floorY, 0);
     this.needsRender = true;
   }
 
   setView(name) {
     const head = new THREE.Vector3(0, this.headY ?? 10, 0);
+    const f = this.fit || 1;
     const mid = this.focus.clone();
     const views = {
-      top: { pos: new THREE.Vector3(0, head.y + 44, 0.001), target: head },
-      view34: { pos: new THREE.Vector3(27, mid.y + 27, 42), target: mid },
-      side: { pos: new THREE.Vector3(0, mid.y + 3, 60), target: mid },
-      front: { pos: new THREE.Vector3(0, head.y + 34, 28), target: head },
+      top: { pos: new THREE.Vector3(0, head.y + 44 * f, 0.001), target: head },
+      view34: { pos: new THREE.Vector3(27 * f, mid.y + 27 * f, 42 * f), target: mid },
+      side: { pos: new THREE.Vector3(0, mid.y + 3, 60 * f), target: mid },
+      front: { pos: new THREE.Vector3(0, head.y + 34 * f, 28 * f), target: head },
     };
     const v = views[name] || views.view34;
     this._tween = {
