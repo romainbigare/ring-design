@@ -57,16 +57,18 @@ export class Hand {
     const m = new THREE.MeshPhysicalMaterial({
       map: src?.map || null,
       normalMap: src?.normalMap || null,
+      roughnessMap: src?.roughnessMap || null,
+      aoMap: src?.aoMap || null,
       color: 0xffffff,
-      roughness: 0.52,
+      roughness: src?.roughnessMap ? 1 : 0.52,
       metalness: 0,
       specularIntensity: 0.45,
-      sheen: 0.35,
+      sheen: 0.2,
       sheenRoughness: 0.6,
       sheenColor: new THREE.Color(1.0, 0.82, 0.76),
       alphaHash: true,
     });
-    if (m.normalMap) m.normalScale.set(0.6, 0.6);
+    if (m.normalMap) m.normalScale.copy(src.normalScale || new THREE.Vector2(1, 1));
     this._addFade(m);
     this._addScatter(m);
     this.skin = m;
@@ -76,8 +78,11 @@ export class Hand {
   _nailMaterial(src) {
     const m = new THREE.MeshPhysicalMaterial({
       map: src?.map || null,
+      normalMap: src?.normalMap || null,
+      roughnessMap: src?.roughnessMap || null,
+      aoMap: src?.aoMap || null,
       color: src?.map ? 0xffffff : 0xf2d2c8,
-      roughness: 0.25,
+      roughness: src?.roughnessMap ? 1 : 0.25,
       metalness: 0,
       clearcoat: 0.6,
       clearcoatRoughness: 0.15,
@@ -108,7 +113,7 @@ export class Hand {
     m.userData.scatter = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <emissivemap_fragment>',
-        '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(0.10, 0.035, 0.02);',
+        '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(0.05, 0.015, 0.008);',
       );
     };
   }

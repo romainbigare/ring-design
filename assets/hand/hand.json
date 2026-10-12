@@ -1,0 +1,11 @@
+{
+  "ringCircumference": 49.75,
+  "minY": -31.354,
+  "handLength": 172.9,
+  "forearmEndZ": 233.699,
+  "handBreadth": 75.3,
+  "ringFingerPosition": "origin, 42% of the way from the MCP to the PIP joint",
+  "units": "mm",
+  "source": "MakeHuman 1.x base mesh, macro/arm targets, default skeleton + weights, young_caucasian_female skin (makehumancommunity, CC0 1.0); posed, subdivided, atlased and procedurally textured by tools/build_hand.py",
+  "license": "CC0"
+}

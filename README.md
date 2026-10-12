@@ -71,6 +71,15 @@ The default size is **49.75 EU**. An EU size is the inner circumference in mm,
 so 49.75 mm of circumference gives an inner diameter of about **15.84 mm**
 (49.75 / π).
 
+## Hand
+
+The **Hand** button shows the ring worn on a woman's left hand (ring finger).
+The hand is built from [MakeHuman](https://github.com/makehumancommunity/makehuman)
+assets (CC0, public domain) by `tools/build_hand.py`, and is real size: the ring
+finger measures exactly the ring size around (49.75 mm by default; the hand
+scales with the ring size slider). Hand length is about 17.3 cm. The skin tone
+can be changed in the Studio section. See `assets/hand/LICENSE.md`.
+
 ## How it works
 
 - The scene is drawn with [three.js](https://threejs.org/).

@@ -419,8 +419,8 @@ export class Studio {
       view34: { pos: new THREE.Vector3(27 * f, mid.y + 27 * f, 42 * f), target: mid },
       side: { pos: new THREE.Vector3(0, mid.y + 3, 60 * f), target: mid },
       front: { pos: new THREE.Vector3(0, head.y + 34 * f, 28 * f), target: head },
-      // Looking at the hand from the wrist side, like looking at your own hand.
-      hand: { pos: new THREE.Vector3(55, head.y + 95, 150), target: new THREE.Vector3(0, head.y - 6, -25) },
+      // Looking at the hand from the fingertips, slightly to the side.
+      hand: { pos: new THREE.Vector3(-75, head.y + 75, -150), target: new THREE.Vector3(0, head.y - 14, -10) },
     };
     const v = views[name] || views.view34;
     this._tween = {

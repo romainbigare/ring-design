@@ -1385,7 +1385,7 @@ def main():
     ap.add_argument('--cache', default=os.environ.get('HAND_CACHE', os.path.expanduser('~/.cache/ring-design-hand')),
                     help='download cache (not committed)')
     ap.add_argument('--out', default=os.path.join(REPO, 'assets', 'hand'))
-    ap.add_argument('--tex', type=int, default=4096)
+    ap.add_argument('--tex', type=int, default=2048)
     a = ap.parse_args()
     build(a.cache, a.out, a.tex)
 
