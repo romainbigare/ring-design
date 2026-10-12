@@ -75,13 +75,26 @@ function perimeter(outline) {
 // Sweep a closed profile (o = outward offset from the outline, y = height)
 // along a closed outline in the XZ plane. Returns a smooth indexed geometry.
 function sweepClosed(outline, profile) {
-  const normals = outlineNormals(outline);
-  const nI = outline.length, nJ = profile.length;
+  let jMax = 0;
+  profile.forEach(([o], j) => { if (o > profile[jMax][0]) jMax = j; });
+  return sweepVar(outline, outlineNormals(outline), () => profile, jMax);
+}
+
+// Same, with a profile that may change along the outline (same point count).
+// jRef = index of a profile point whose normal must point outward.
+function sweepVar(outline, normals, profileAt, jRef) {
+  const nI = outline.length;
+  const profiles = outline.map((_, i) => profileAt(i));
+  const nJ = profiles[0].length;
+  if (!jRef) {
+    jRef = 0;
+    profiles[0].forEach(([o], j) => { if (o > profiles[0][jRef][0]) jRef = j; });
+  }
   const pos = new Float32Array(nI * nJ * 3);
   for (let i = 0; i < nI; i++) {
     const p = outline[i], nn = normals[i];
     for (let j = 0; j < nJ; j++) {
-      const [o, y] = profile[j];
+      const [o, y] = profiles[i][j];
       const k = (i * nJ + j) * 3;
       pos[k] = p.x + nn.x * o;
       pos[k + 1] = y;
@@ -101,12 +114,9 @@ function sweepClosed(outline, profile) {
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
-  // Winding check: the vertex with the largest outward offset must have a
-  // normal pointing outward.
-  let jMax = 0;
-  profile.forEach(([o], j) => { if (o > profile[jMax][0]) jMax = j; });
+  // Winding check: the most outward profile point must have an outward normal.
   const nAttr = g.attributes.normal;
-  const nx = nAttr.getX(jMax), nz = nAttr.getZ(jMax);
+  const nx = nAttr.getX(jRef), nz = nAttr.getZ(jRef);
   if (nx * normals[0].x + nz * normals[0].y < 0) flipIndex(g);
   return g;
 }
@@ -200,15 +210,12 @@ function buildBand(P, head) {
     const e = sn >= 0 ? exps[0] : exps[1];
     prof.push([Math.sign(c) * Math.pow(Math.abs(c), 2 / e), 0.5 + 0.5 * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / e)]);
   }
-  // Shoulders: under the head the band grows up to meet the gallery.
+  // Shoulders: the band swells smoothly near the top to meet the gallery
+  // under the centre setting (soft bell curve, no hard block).
   const outerTop = R + t;
-  const thetaH = Math.asin(Math.min(0.95, (head.halfWidth * 0.62) / (head.bottomY + 0.2)));
-  const extra = (th) => {
-    const a = Math.abs(th);
-    if (a > thetaH) return 0;
-    const need = head.bottomY / Math.cos(a) + 0.15 - outerTop;
-    return Math.max(0, need) * (1 - smoothstep(thetaH * 0.55, thetaH, a));
-  };
+  const lift = Math.max(0, head.bottomY + 0.15 - outerTop);
+  const thetaW = THREE.MathUtils.clamp((head.halfWidth * 0.32) / outerTop, 0.18, 0.5);
+  const extra = (th) => lift * Math.exp(-((th / thetaW) ** 2)) + (lift > 0 ? 0.04 : 0);
   const pos = new Float32Array(nT * nP * 3);
   for (let i = 0; i < nT; i++) {
     const th = (i / nT) * Math.PI * 2 - Math.PI; // -π..π, 0 = top
@@ -262,56 +269,92 @@ function cupProfile({ wall, lip, yTop, yBot, inner, roundR = 0.05, foot = wall *
   return roundCorners(pts, roundR, 3).map((p) => [p.x, p.y]);
 }
 
-// Gold point that extends a round cup outward along +Z (local): a rounded
-// ridge that narrows and slopes down to a point.
-// r = radius where it joins the cup wall, tipZ = distance of the point.
-function buildPointedTip(r, tipZ, y0, y1) {
-  const phi = Math.acos(Math.min(0.999, r / tipZ));
-  const zt = r * Math.cos(phi), ht = r * Math.sin(phi); // tangent point
-  const z0 = zt - 0.2;
-  const nZ = 24, nU = 16;
-  const ring = []; // cross-section loop: rounded top (u -1..1) then flat bottom
-  for (let k = 0; k <= nU; k++) ring.push(-1 + (2 * k) / nU);
-  const pos = [];
-  for (let i = 0; i <= nZ; i++) {
-    const f = i / nZ;
-    const z = z0 + (tipZ - z0) * f;
-    const hw = Math.max(0.01, ht * (tipZ - z) / (tipZ - zt));
-    const top = y1 - 0.22 * Math.pow(Math.max(0, (z - zt) / (tipZ - zt)), 1.3);
-    for (const u of ring) {
-      const dome = Math.pow(Math.max(0, 1 - Math.abs(u) ** 2.2), 0.45);
-      pos.push(u * hw, y0 + (top - y0) * (0.35 + 0.65 * dome), z);
-    }
-    pos.push(0, y0, z); // bottom centre closes the loop
-  }
-  const nR = ring.length + 1;
-  const idx = [];
-  for (let i = 0; i < nZ; i++) {
-    for (let j = 0; j < nR; j++) {
-      const j2 = (j + 1) % nR;
-      const a = i * nR + j, b = (i + 1) * nR + j, c = (i + 1) * nR + j2, d = i * nR + j2;
-      idx.push(a, d, b, b, d, c);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  // the top-centre vertex of the middle section must point up
-  if (g.attributes.normal.getY((nZ >> 1) * nR + (nU >> 1)) < 0) flipIndex(g);
-  return g;
-}
+// Halo cup ("collet") in the stone's local frame (+Z = away from the centre).
+// Cross-section: thin lip holding the stone, a ring of milgrain beads, a
+// sloped collar with radial ribs, a rounded outer rim, and a tapered body.
+// With pointedTip > 0 the collar of a round stone stretches into a teardrop
+// point along +Z, like the cardinal settings of the reference ring.
+function buildCup({ gem, gw, wall, yTop, yBot, pointedTip, roundStone, ribbed, ribDepth, milgrain, milgrainMode, beadR }) {
+  const r = gw / 2;
+  const Ro = r + wall;
+  const T = Ro + pointedTip;
+  const phi = pointedTip > 0 ? Math.acos(Ro / T) : 0;
+  const ribPitch = 0.2;
+  const perimEst = 2 * Math.PI * Ro + 2 * pointedTip;
+  const nRibs = Math.max(12, Math.round(perimEst / ribPitch));
+  const M = ribbed ? Math.ceil((nRibs * 5) / 4) * 4 : 96;
 
-// Closed outline (x, z) of a circle of radius r with a point at +Z.
-function pointedOutline(r, tipZ, count) {
-  const phi = Math.acos(Math.min(0.999, r / tipZ));
-  const pts = [new THREE.Vector2(0, tipZ)];
-  const segs = 64;
-  for (let k = 0; k <= segs; k++) {
-    const ang = phi + ((2 * Math.PI - 2 * phi) * k) / segs;
-    pts.push(new THREE.Vector2(r * Math.sin(ang), r * Math.cos(ang)));
+  // Stone outline starting at +Z (so a vertex sits exactly on the tip).
+  let base;
+  if (roundStone) {
+    base = [];
+    for (let i = 0; i < M; i++) {
+      const al = (i / M) * Math.PI * 2;
+      base.push(new THREE.Vector2(r * Math.sin(al), r * Math.cos(al)));
+    }
+  } else {
+    let k0 = 0;
+    gem.outline.forEach((q, k) => { if (q.y > gem.outline[k0].y) k0 = k; });
+    base = resampleClosed(gem.outline.slice(k0).concat(gem.outline.slice(0, k0)), M);
   }
-  return resampleClosed(pts, count);
+  const normals = outlineNormals(base);
+
+  // Collar width for every outline sample (teardrop for the pointed setting).
+  const walls = base.map((q) => {
+    if (!(pointedTip > 0)) return wall;
+    const th = Math.abs(Math.atan2(q.x, q.y));
+    const rho = th < phi ? Ro / Math.cos(phi - th) : Ro;
+    return rho - r;
+  });
+
+  const lip = 0.05;
+  const beadsIn = milgrain && milgrainMode !== 'outer';
+  const beadsOut = milgrain && milgrainMode !== 'inner';
+  const bz = beadsIn ? beadR * 2.1 : 0.04;           // collar starts after the inner beads
+  const rimW = Math.min(0.12, wall * 0.3);
+  const C = 8;                                         // collar samples
+  const h = yTop - yBot;
+
+  const profileAt = (i) => {
+    const wi = walls[i];
+    const u = i / M;
+    const drop = Math.min(0.28, 0.1 + 0.18 * (wi - bz) / 0.6); // longer collars slope further
+    const groove = ribbed ? Math.pow(0.5 + 0.5 * Math.cos(2 * Math.PI * nRibs * u), 3) : 0;
+    const prof = [
+      [-lip, yTop - 0.06],
+      [-lip * 0.4, yTop],
+      [bz * 0.6, yTop + 0.005],
+    ];
+    const outerEnd = wi - rimW;
+    for (let k = 0; k <= C; k++) {
+      const t = k / C;
+      const o = bz + (outerEnd - bz) * t;
+      const fade = Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15)), 0.7);
+      prof.push([o, yTop - drop * Math.pow(t, 1.15) - ribDepth * groove * fade]);
+    }
+    const yr = yTop - drop;
+    prof.push([wi - rimW * 0.35, yr - 0.005]);
+    prof.push([wi, yr - rimW * 0.45]);
+    prof.push([wi - 0.01, yr - Math.max(0.12, (yr - yBot) * 0.3)]);
+    prof.push([Math.min(wi * 0.35, wall * 0.5) - gw * 0.1, yBot]);
+    prof.push([-gw * 0.22, yBot]);
+    prof.push([-gw * 0.22, yBot + 0.12]);
+    prof.push([0, yTop - 0.18]);
+    return prof;
+  };
+  const geometry = sweepVar(base, normals, profileAt, 0);
+
+  // Milgrain: around the stone and/or along the outer rim.
+  const beads = [];
+  if (beadsIn) addMilgrain(beads, base, beadR * 1.05, yTop + beadR * 0.35, beadR);
+  const rim = base.map((q, i) => q.clone().addScaledVector(normals[i], walls[i]));
+  if (beadsOut) {
+    const yr = yTop - Math.min(0.28, 0.1 + 0.18 * (wall - bz) / 0.6);
+    const path = base.map((q, i) => q.clone().addScaledVector(normals[i], walls[i] - beadR * 1.1));
+    const count = Math.max(8, Math.floor(perimeter(path) / (beadR * 2.15)));
+    for (const q of resampleClosed(path, count)) beads.push(new THREE.Vector3(q.x, yr + beadR * 0.2, q.y));
+  }
+  return { geometry, beads, rim };
 }
 
 function addMilgrain(list, outline, offset, y, beadR) {
@@ -423,31 +466,21 @@ export function buildRing(P, materials) {
     const yTop = haloGirdleY + g / 2 + 0.1;
     const yBot = haloGirdleY - gem.pavilionDepth - 0.12;
     lowest = Math.min(lowest, yBot);
-    const outline = resampleClosed(gem.outline, 72);
-    const cup = sweepClosed(outline, cupProfile({ wall: w, lip: 0.05, yTop, yBot, inner: gw * 0.22, roundR: 0.04, foot: -gw * 0.1 }));
-    cup.applyMatrix4(m);
-    goldGeoms.push(cup);
-
-    let beadPath = outline, beadOffset = w * 0.5;
-    let reach = 0; // outward reach of the setting beyond the stone outline
-    if (isCard && pointed) {
-      const r = gw / 2;
-      const tipZ = r + w + P.tipLength;
-      const tip = buildPointedTip(r + w * 0.5, tipZ, yTop - Math.min(0.45, (yTop - yBot) * 0.6), yTop);
-      tip.applyMatrix4(m);
-      goldGeoms.push(tip);
-      beadPath = pointedOutline(r + w * 0.5, tipZ - 0.12, 72);
-      beadOffset = 0;
-      reach = tipZ - r;
+    const cupData = buildCup({
+      gem, gw, wall: w, yTop, yBot,
+      pointedTip: isCard && pointed ? P.tipLength : 0,
+      roundStone: !isCard || shape === 'round' || pointed,
+      ribbed: P.ribbed, ribDepth: P.ribDepth,
+      milgrain: P.milgrain, milgrainMode: P.milgrainMode, beadR,
+    });
+    cupData.geometry.applyMatrix4(m);
+    goldGeoms.push(cupData.geometry);
+    for (const v of cupData.beads) beads.push(v.applyMatrix4(m));
+    for (const q of cupData.rim) {
+      const v = new THREE.Vector3(q.x, 0, q.y).applyMatrix4(m);
+      maxX = Math.max(maxX, Math.abs(v.x));
+      maxZ = Math.max(maxZ, Math.abs(v.z));
     }
-    if (P.milgrain) {
-      const local = [];
-      addMilgrain(local, beadPath, beadOffset, yTop + beadR * 0.35, beadR);
-      for (const v of local) beads.push(v.applyMatrix4(m));
-    }
-    for (const q of gem.outline) maxX = Math.max(maxX, Math.abs(cx + q.x * Math.cos(rotY) + q.y * Math.sin(rotY)) + w);
-    maxX = Math.max(maxX, Math.abs(cx + n.x * (gw / 2 + reach)));
-    maxZ = Math.max(maxZ, Math.abs(cz + n.y * (gw / 2 + reach)) + (isCard ? 0 : w), Math.abs(cz) + gw / 2 + w);
   }
 
   // ---- connection legs ----------------------------------------------------

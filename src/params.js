@@ -25,8 +25,11 @@ export const DEFAULTS = {
   haloAutoSize: true,
   haloGap: 0.1,             // distance between centre bezel and halo cups
   haloSpacing: 0.05,        // space between neighbouring halo cups (auto size)
-  cupWall: 0.22,
+  cupWall: 0.32,             // width of the gold collar around each halo stone
+  ribbed: true,             // radial ribs on the collar
+  ribDepth: 0.045,
   milgrain: true,
+  milgrainMode: 'both',     // inner | outer | both
   milgrainSize: 0.13,
 
   // Cardinal stones (N, S, E, W)
@@ -42,7 +45,7 @@ export const DEFAULTS = {
   galleryHeight: 1.2,       // height of the head above the band
 
   // Rendering
-  scene: 'studio',          // studio | velvet | dark
+  scene: 'slate',           // slate | studio | velvet | dark
   dispersion: 0.012,
   bounces: 5,
   bloom: 0.2,
@@ -51,17 +54,26 @@ export const DEFAULTS = {
 };
 
 export const PRESETS = {
-  // Top ring of the photo: 12 halo stones, a bit more space.
+  // Top ring of the first photo: 12 halo stones, a bit more space.
   A: {
     stoneWidth: 9.2, stoneLength: 6.0, stoneDepth: 1.26,
-    haloCount: 12, haloAutoSize: true, haloGap: 0.15, haloSpacing: 0.18,
-    cardinalShape: 'round', cardinalScale: 1.0, milgrain: true,
+    haloCount: 12, haloAutoSize: true, haloGap: 0.15, haloSpacing: 0.18, cupWall: 0.26,
+    cardinalShape: 'round', cardinalScale: 1.0,
+    ribbed: false, milgrain: true, milgrainMode: 'outer', legsMode: 'auto',
   },
-  // Bottom ring of the photo: 16 halo stones, tight entourage.
+  // Bottom ring of the first photo: 16 halo stones, tight entourage.
   B: {
     stoneWidth: 9.2, stoneLength: 6.0, stoneDepth: 1.26,
-    haloCount: 16, haloAutoSize: true, haloGap: 0.08, haloSpacing: 0.05,
-    cardinalShape: 'round', cardinalScale: 1.0, milgrain: true,
+    haloCount: 16, haloAutoSize: true, haloGap: 0.08, haloSpacing: 0.05, cupWall: 0.24,
+    cardinalShape: 'round', cardinalScale: 1.0,
+    ribbed: false, milgrain: true, milgrainMode: 'outer', legsMode: 'auto',
+  },
+  // Second photo: ribbed collars, cardinal collars drawn out into points.
+  C: {
+    stoneWidth: 9.2, stoneLength: 6.0, stoneDepth: 1.26,
+    haloCount: 12, haloAutoSize: true, haloGap: 0.12, haloSpacing: 0.06, cupWall: 0.34,
+    cardinalShape: 'pointed', cardinalScale: 1.3, tipLength: 0.9,
+    ribbed: true, ribDepth: 0.045, milgrain: true, milgrainMode: 'inner', legsMode: 'auto',
   },
 };
 
@@ -79,6 +91,7 @@ export const SCHEMA = [
       { type: 'buttons', items: [
         { label: 'Ring A (12 stones)', action: 'presetA' },
         { label: 'Ring B (16 stones)', action: 'presetB' },
+        { label: 'Ring C (ribbed, pointy)', action: 'presetC' },
       ] },
     ],
   },
@@ -99,8 +112,15 @@ export const SCHEMA = [
       { key: 'haloStoneSize', label: 'Stone size', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm' },
       { key: 'haloSpacing', label: 'Space between stones', type: 'range', min: 0, max: 0.8, step: 0.01, unit: 'mm' },
       { key: 'haloGap', label: 'Distance to centre', type: 'range', min: 0, max: 2.5, step: 0.01, unit: 'mm' },
-      { key: 'cupWall', label: 'Setting wall', type: 'range', min: 0.12, max: 0.5, step: 0.01, unit: 'mm' },
+      { key: 'cupWall', label: 'Setting collar', type: 'range', min: 0.12, max: 0.8, step: 0.01, unit: 'mm' },
+      { key: 'ribbed', label: 'Ribbed collar', type: 'toggle' },
+      { key: 'ribDepth', label: 'Rib depth', type: 'range', min: 0.01, max: 0.1, step: 0.005, unit: 'mm' },
       { key: 'milgrain', label: 'Milgrain beads', type: 'toggle' },
+      { key: 'milgrainMode', label: 'Beads position', type: 'select', options: [
+        { value: 'both', label: 'Stone + outer edge' },
+        { value: 'inner', label: 'Around the stone' },
+        { value: 'outer', label: 'Outer edge' },
+      ] },
       { key: 'milgrainSize', label: 'Bead size', type: 'range', min: 0.06, max: 0.25, step: 0.005, unit: 'mm' },
     ],
   },
@@ -108,7 +128,7 @@ export const SCHEMA = [
     folder: 'Cardinal stones', open: true, items: [
       { key: 'cardinalShape', label: 'Shape', type: 'select', options: [
         { value: 'round', label: 'Round' },
-        { value: 'pointed', label: 'Round, pointy setting' },
+        { value: 'pointed', label: 'Round, pointy collar' },
         { value: 'pear', label: 'Pear (pointy)' },
         { value: 'marquise', label: 'Marquise (pointy)' },
       ] },
@@ -145,6 +165,7 @@ export const SCHEMA = [
   {
     folder: 'Studio', open: false, items: [
       { key: 'scene', label: 'Backdrop', type: 'select', options: [
+        { value: 'slate', label: 'Dark slate' },
         { value: 'studio', label: 'White studio' },
         { value: 'velvet', label: 'Black velvet' },
         { value: 'dark', label: 'Dark grey' },

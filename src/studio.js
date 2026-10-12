@@ -6,11 +6,14 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { HorizontalBlurShader } from 'three/addons/shaders/HorizontalBlurShader.js';
+import { VerticalBlurShader } from 'three/addons/shaders/VerticalBlurShader.js';
 
 const BACKDROPS = {
-  studio: { floor: 0xf1efec, sky: 0xdedad5, walls: 0.32, floorEnv: 0.9, velvet: false, backdropEnv: 0.3, bloomThreshold: 3.0 },
-  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, backdropEnv: 1.0, bloomThreshold: 3.2 },
-  dark:   { floor: 0x2a2a2c, sky: 0x1c1c1e, walls: 0.06, floorEnv: 0.08, velvet: false, backdropEnv: 0.6, bloomThreshold: 2.6 },
+  slate:  { floor: 0x3a3a3c, sky: 0x111112, walls: 0.09, floorEnv: 0.03, velvet: false, slate: true, backdropEnv: 0.55, bloomThreshold: 2.6, sun: 0.5, contact: 0.9 },
+  studio: { floor: 0xf1efec, sky: 0xdedad5, walls: 0.32, floorEnv: 0.9, velvet: false, backdropEnv: 0.3, bloomThreshold: 3.0, sun: 1.0, contact: 0.55 },
+  velvet: { floor: 0x060606, sky: 0x020202, walls: 0.025, floorEnv: 0.02, velvet: true, backdropEnv: 1.0, bloomThreshold: 3.2, sun: 0.35, contact: 0.95 },
+  dark:   { floor: 0x2a2a2c, sky: 0x1c1c1e, walls: 0.06, floorEnv: 0.08, velvet: false, backdropEnv: 0.6, bloomThreshold: 2.6, sun: 0.6, contact: 0.85 },
 };
 
 export class Studio {
@@ -55,7 +58,7 @@ export class Studio {
     window.addEventListener('resize', this._resize);
     this._resize();
 
-    this.setBackdrop('studio');
+    this.setBackdrop('slate');
     this._tween = null;
   }
 
@@ -188,24 +191,91 @@ export class Studio {
     this.backdrop.receiveShadow = true;
     this.scene.add(this.backdrop);
 
-    // Soft contact shadow right under the ring.
-    const ctx = document.createElement('canvas');
-    ctx.width = ctx.height = 128;
-    const c2 = ctx.getContext('2d');
-    const grad = c2.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(0,0,0,0.85)');
-    grad.addColorStop(0.35, 'rgba(0,0,0,0.35)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    c2.fillStyle = grad;
-    c2.fillRect(0, 0, 128, 128);
-    const tex = new THREE.CanvasTexture(ctx);
-    this.contact = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }),
+    this.slateTex = makeSlateTexture();
+    this._buildContactShadow();
+  }
+
+  // Contact shadow: render the ring's depth from below into a small texture,
+  // blur it and lay it on the floor (soft, darker where the ring is close).
+  _buildContactShadow() {
+    const size = 60, height = 14, res = 512;
+    this.shadowGroup = new THREE.Group();
+    this.scene.add(this.shadowGroup);
+    this.shadowRT = new THREE.WebGLRenderTarget(res, res);
+    this.shadowRT.texture.generateMipmaps = false;
+    this.shadowBlurRT = new THREE.WebGLRenderTarget(res, res);
+    this.shadowBlurRT.texture.generateMipmaps = false;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size).rotateX(Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: this.shadowRT.texture, transparent: true, depthWrite: false, toneMapped: false }),
     );
-    this.contact.rotation.x = -Math.PI / 2;
-    this.contact.renderOrder = 1;
-    this.scene.add(this.contact);
+    plane.renderOrder = 1;
+    plane.scale.y = -1;
+    this.contact = plane;
+    this.shadowGroup.add(plane);
+    this.blurPlane = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(Math.PI / 2));
+    this.blurPlane.visible = false;
+    this.shadowGroup.add(this.blurPlane);
+    this.shadowCam = new THREE.OrthographicCamera(-size / 2, size / 2, size / 2, -size / 2, 0, height);
+    this.shadowCam.rotation.x = Math.PI / 2; // look up
+    this.shadowGroup.add(this.shadowCam);
+
+    const dm = new THREE.MeshDepthMaterial();
+    dm.userData.darkness = { value: 1.4 };
+    dm.onBeforeCompile = (shader) => {
+      shader.uniforms.darkness = dm.userData.darkness;
+      shader.fragmentShader = 'uniform float darkness;\n' + shader.fragmentShader.replace(
+        'gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );',
+        'gl_FragColor = vec4( vec3( 0.0 ), ( 1.0 - fragCoordZ ) * darkness );',
+      );
+    };
+    dm.depthTest = false;
+    dm.depthWrite = false;
+    this.depthMat = dm;
+    this.hBlur = new THREE.ShaderMaterial(HorizontalBlurShader);
+    this.hBlur.depthTest = false;
+    this.vBlur = new THREE.ShaderMaterial(VerticalBlurShader);
+    this.vBlur.depthTest = false;
+    this.shadowDirty = true;
+  }
+
+  _blurShadow(amount) {
+    const bp = this.blurPlane;
+    bp.visible = true;
+    bp.material = this.hBlur;
+    bp.material.uniforms.tDiffuse.value = this.shadowRT.texture;
+    this.hBlur.uniforms.h.value = amount / 256;
+    this.renderer.setRenderTarget(this.shadowBlurRT);
+    this.renderer.render(bp, this.shadowCam);
+    bp.material = this.vBlur;
+    bp.material.uniforms.tDiffuse.value = this.shadowBlurRT.texture;
+    this.vBlur.uniforms.v.value = amount / 256;
+    this.renderer.setRenderTarget(this.shadowRT);
+    this.renderer.render(bp, this.shadowCam);
+    bp.visible = false;
+  }
+
+  _renderContactShadow() {
+    this.shadowDirty = false;
+    const r = this.renderer;
+    const bg = this.scene.background;
+    this.scene.background = null;
+    this.backdrop.visible = false;
+    this.contact.visible = false;
+    this.scene.overrideMaterial = this.depthMat;
+    const cc = r.getClearAlpha();
+    r.setClearAlpha(0);
+    r.setRenderTarget(this.shadowRT);
+    r.clear();
+    r.render(this.scene, this.shadowCam);
+    this.scene.overrideMaterial = null;
+    this._blurShadow(2.2);
+    this._blurShadow(0.9);
+    r.setRenderTarget(null);
+    r.setClearAlpha(cc);
+    this.scene.background = bg;
+    this.backdrop.visible = true;
+    this.contact.visible = true;
   }
 
   _buildLights() {
@@ -264,7 +334,12 @@ export class Studio {
     this.backdropName = name;
     const m = this.backdropMat;
     m.color.set(bd.floor);
-    if (bd.velvet) {
+    m.roughnessMap = null;
+    if (bd.slate) {
+      m.map = this.slateTex;
+      m.roughness = 0.8;
+      m.sheen = 0;
+    } else if (bd.velvet) {
       m.map = this.velvetTex;
       m.roughness = 1;
       m.sheen = 1;
@@ -278,7 +353,8 @@ export class Studio {
     m.envMapIntensity = bd.backdropEnv;
     m.needsUpdate = true;
     this.scene.background = new THREE.Color(bd.sky);
-    this.sun.intensity = bd.velvet ? 0.4 : 1.2;
+    this.sun.intensity = bd.sun;
+    this.contact.material.opacity = bd.contact;
     this.bloom.threshold = bd.bloomThreshold;
     this._updateEnvironment(bd);
     this.needsRender = true;
@@ -294,8 +370,8 @@ export class Studio {
     this.ringRoot.add(group);
     this.floorY = bottomY - 0.02;
     this.backdrop.position.y = this.floorY;
-    this.contact.position.set(0, this.floorY + 0.03, 0);
-    this.contact.scale.set(Math.max(width, 8) * 0.9, 1, 5);
+    this.shadowGroup.position.set(0, this.floorY + 0.02, 0);
+    this.shadowDirty = true;
     const newFocus = new THREE.Vector3(0, (focusY + bottomY) * 0.5 + 2, 0);
     if (!this._placed) {
       this.controls.target.copy(newFocus);
@@ -341,6 +417,7 @@ export class Studio {
     if (moved || this.controls.autoRotate) this.needsRender = true;
     if (!this.needsRender) return false;
     this.needsRender = false;
+    if (this.shadowDirty) this._renderContactShadow();
     this.composer.render();
     return true;
   }
@@ -353,6 +430,46 @@ export class Studio {
     a.download = filename;
     a.click();
   }
+}
+
+function makeSlateTexture() {
+  // Dark slate: soft cloudy value noise plus fine grain and faint streaks.
+  const size = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const rng = mulberry32(11);
+  const grid = (n) => Array.from({ length: n * n }, () => rng());
+  const octaves = [[8, 0.3], [16, 0.25], [32, 0.2], [96, 0.12]].map(([n, amp]) => ({ n, amp, g: grid(n) }));
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const sample = ({ n, g }, x, y) => {
+    const fx = x * n, fy = y * n;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = smooth(fx - x0), ty = smooth(fy - y0);
+    const v = (i, j) => g[((j % n + n) % n) * n + ((i % n + n) % n)];
+    const a = v(x0, y0) + (v(x0 + 1, y0) - v(x0, y0)) * tx;
+    const b = v(x0, y0 + 1) + (v(x0 + 1, y0 + 1) - v(x0, y0 + 1)) * tx;
+    return a + (b - a) * ty;
+  };
+  const img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let v = 0;
+      for (const o of octaves) v += sample(o, x / size, y / size) * o.amp;
+      v += Math.sin((x * 0.9 + y * 0.25) * 0.08 + v * 6) * 0.025; // faint cleavage streaks
+      v += (rng() - 0.5) * 0.12;                                 // grain
+      const k = Math.max(0, Math.min(255, 140 + (v - 0.44) * 70));
+      const i = (y * size + x) * 4;
+      img.data[i] = k; img.data[i + 1] = k; img.data[i + 2] = k * 1.02; img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.repeat.set(1, 1);
+  tex.anisotropy = 8;
+  return tex;
 }
 
 function makeVelvetTexture() {

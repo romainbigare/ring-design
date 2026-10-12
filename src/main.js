@@ -126,6 +126,7 @@ function applyAll() {
 const actions = {
   presetA: () => { Object.assign(state, PRESETS.A); applyAll(); toast('Ring A'); },
   presetB: () => { Object.assign(state, PRESETS.B); applyAll(); toast('Ring B'); },
+  presetC: () => { Object.assign(state, PRESETS.C); applyAll(); toast('Ring C'); },
   viewTop: () => studio.setView('top'),
   view34: () => studio.setView('view34'),
   viewSide: () => studio.setView('side'),
