@@ -2,20 +2,24 @@
 import * as THREE from 'three';
 import { DEFAULTS, METALS, SCHEMA, TOOLBAR } from './params.js';
 import { createDesignsUI, pickDesign } from './designs.js';
+import { encodeDesign, decodeDesign } from './share.js';
 import { Studio } from './studio.js';
 import { buildRing, disposeRing } from './ring.js';
 import { createDiamondMaterial, setDiamondOptions } from './gems.js';
 import { createPanel, toast } from './ui.js';
 
 // ---------------------------------------------------------------- state
-// The design lives in the URL query (?stoneWidth=9.2&haloCount=12...), so a
-// link opens the same ring. Old links with the values after '#' still work.
+// The design lives in a short URL code (?r=hc12_cp1_tl.6, see share.js), so a
+// link opens the same ring. Older long links (?haloCount=12…, or after '#')
+// still work.
 const state = { ...DEFAULTS, ...readUrl() };
 
 function readUrl() {
+  const search = new URLSearchParams(location.search);
+  if (search.has('r')) return decodeDesign(search.get('r'));
   const out = {};
   const params = new URLSearchParams(location.hash.slice(1));
-  for (const [k, v] of new URLSearchParams(location.search)) params.set(k, v);
+  for (const [k, v] of search) params.set(k, v);
   for (const [k, v] of params) {
     if (!(k in DEFAULTS)) continue;
     const d = DEFAULTS[k];
@@ -26,29 +30,15 @@ function readUrl() {
   return out;
 }
 
-const encode = (v) => (typeof v === 'boolean' ? (v ? '1' : '0')
-  : typeof v === 'number' ? String(Number(v.toFixed(4))) : String(v));
-
-// all = true: every value (for shared links, so they stay valid if the
-// defaults change later). Otherwise only the values that differ.
-function designParams(all = false) {
-  const params = new URLSearchParams();
-  for (const k of Object.keys(DEFAULTS)) {
-    if (!all && state[k] === DEFAULTS[k]) continue;
-    if (k === 'haloStoneSize' && state.haloAutoSize) continue; // computed value
-    params.set(k, encode(state[k]));
-  }
-  return params.toString();
-}
-
-// Keep the address bar in sync with the design (short form).
+// Keep the address bar in sync with the design.
 function writeUrl() {
-  const q = designParams();
-  history.replaceState(null, '', location.pathname + (q ? `?${q}` : ''));
+  const code = encodeDesign(state);
+  history.replaceState(null, '', location.pathname + (code ? `?r=${code}` : ''));
 }
 
 function shareUrl() {
-  return `${location.origin}${location.pathname}?${designParams(true)}`;
+  const code = encodeDesign(state);
+  return `${location.origin}${location.pathname}${code ? `?r=${code}` : ''}`;
 }
 
 // ---------------------------------------------------------------- scene

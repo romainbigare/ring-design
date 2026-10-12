@@ -83,5 +83,7 @@ so 49.75 mm of circumference gives an inner diameter of about **15.84 mm**
   boxes, strip lights, small spots, black flags), so no image files are needed.
 - The floor shadow is a real contact shadow: the ring is seen from below,
   blurred, and laid on the dark slate (or white, velvet) backdrop.
-- The design is stored in the page address as URL parameters (for example
-  `?haloCount=12&cardinalShape=pointed`), so a link always opens the same ring.
+- The design is stored in a short code in the page address, for example
+  `?r=hc12_cp1_cs1.3`. Each setting has a 2-letter code, and only the values
+  that differ from a fixed base design are written, so links stay short and
+  always open the same ring. Older long links still work.
