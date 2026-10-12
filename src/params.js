@@ -57,6 +57,8 @@ export const DEFAULTS = {
   bloom: 0.2,
   exposure: 1.0,
   autoRotate: false,
+  showHand: false,          // show a woman's hand wearing the ring
+  skinTone: 'light',        // light | medium | tan | deep
 };
 
 export const PRESETS = {
@@ -193,6 +195,13 @@ export const SCHEMA = [
   },
   {
     folder: 'Studio', open: false, items: [
+      { key: 'showHand', label: 'Show on a hand', type: 'toggle' },
+      { key: 'skinTone', label: 'Skin tone', type: 'select', when: (s) => s.showHand, options: [
+        { value: 'light', label: 'Light' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'tan', label: 'Tan' },
+        { value: 'deep', label: 'Deep' },
+      ] },
       { key: 'scene', label: 'Backdrop', type: 'select', options: [
         { value: 'slate', label: 'Dark slate' },
         { value: 'studio', label: 'White studio' },
@@ -215,7 +224,8 @@ export const TOOLBAR = [
   { label: 'Top', action: 'viewTop', view: true },
   { label: '3/4', action: 'view34', view: true },
   { label: 'Side', action: 'viewSide', view: true },
-  { label: 'Hand', action: 'viewFront', view: true },
+  { label: 'Front', action: 'viewFront', view: true },
+  { label: 'Hand', action: 'toggleHand', toggle: 'showHand' },
   { label: 'Photo', action: 'screenshot' },
   { label: 'Reset', action: 'reset' },
 ];

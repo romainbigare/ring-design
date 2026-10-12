@@ -365,10 +365,8 @@ export class Studio {
   placeRing(group, { bottomY, focusY, width, info }) {
     this.ringRoot.clear();
     this.ringRoot.add(group);
-    this.floorY = bottomY - 0.02;
-    this.backdrop.position.y = this.floorY;
-    this.shadowGroup.position.set(0, this.floorY + 0.02, 0);
-    this.shadowDirty = true;
+    this.ringBottomY = bottomY;
+    this._updateFloor();
     const newFocus = new THREE.Vector3(0, (focusY + bottomY) * 0.5 + 2, 0);
     if (!this._placed) {
       this.controls.target.copy(newFocus);
@@ -377,7 +375,38 @@ export class Studio {
     this.focus.copy(newFocus);
     this.headY = focusY;
     this.fit = Math.max(1, (info?.headWidth || 14) / 14.5, (info?.headLength || 11) / 11.5);
-    this.sun.target.position.set(0, this.floorY, 0);
+    this.needsRender = true;
+  }
+
+  // Optional hand wearing the ring (src/hand.js). The floor goes down to the
+  // lowest point of the hand, and the shadows cover the whole hand.
+  setHand(hand) {
+    if (this.hand !== hand) {
+      if (this.hand) this.scene.remove(this.hand.group);
+      this.hand = hand;
+      if (hand) this.scene.add(hand.group);
+    }
+    this._updateFloor();
+  }
+
+  get handVisible() { return !!this.hand?.group.visible; }
+
+  _updateFloor() {
+    const handOn = this.handVisible;
+    let y = this.ringBottomY ?? -10;
+    if (handOn) y = Math.min(y, this.hand.minY);
+    this.floorY = y - 0.02;
+    this.backdrop.position.y = this.floorY;
+    this.shadowGroup.position.set(0, this.floorY + 0.02, 0);
+    // Contact shadow and key-light shadow: ring only, or the whole hand.
+    const k = handOn ? 5.5 : 1;
+    this.shadowGroup.scale.setScalar(k);
+    const s = this.sun.shadow.camera;
+    s.left = -30 * k; s.right = 30 * k; s.top = 30 * k; s.bottom = -30 * k; s.far = 250 + 100 * (k - 1);
+    s.updateProjectionMatrix();
+    this.sun.shadow.needsUpdate = true;
+    this.sun.target.position.set(0, this.floorY, handOn ? 40 : 0);
+    this.shadowDirty = true;
     this.needsRender = true;
   }
 
@@ -390,6 +419,8 @@ export class Studio {
       view34: { pos: new THREE.Vector3(27 * f, mid.y + 27 * f, 42 * f), target: mid },
       side: { pos: new THREE.Vector3(0, mid.y + 3, 60 * f), target: mid },
       front: { pos: new THREE.Vector3(0, head.y + 34 * f, 28 * f), target: head },
+      // Looking at the hand from the wrist side, like looking at your own hand.
+      hand: { pos: new THREE.Vector3(55, head.y + 95, 150), target: new THREE.Vector3(0, head.y - 6, -25) },
     };
     const v = views[name] || views.view34;
     this._tween = {

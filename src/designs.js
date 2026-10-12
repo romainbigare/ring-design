@@ -7,7 +7,7 @@ const KEY = 'ringStudio.designs.v1';
 const SEEDED_KEY = 'ringStudio.seeded.v1';
 
 // Studio settings are viewing preferences, not part of a design.
-export const STUDIO_KEYS = new Set(['scene', 'exposure', 'bloom', 'dispersion', 'bounces', 'autoRotate']);
+export const STUDIO_KEYS = new Set(['scene', 'exposure', 'bloom', 'dispersion', 'bounces', 'autoRotate', 'showHand', 'skinTone']);
 export const DESIGN_KEYS = Object.keys(DEFAULTS).filter((k) => !STUDIO_KEYS.has(k));
 
 const STARTERS = [

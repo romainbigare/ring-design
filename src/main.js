@@ -4,6 +4,7 @@ import { DEFAULTS, METALS, SCHEMA, TOOLBAR } from './params.js';
 import { createDesignsUI, pickDesign } from './designs.js';
 import { encodeDesign, decodeDesign } from './share.js';
 import { Studio } from './studio.js';
+import { Hand } from './hand.js';
 import { buildRing, disposeRing } from './ring.js';
 import { createDiamondMaterial, setDiamondOptions } from './gems.js';
 import { createPanel, toast } from './ui.js';
@@ -43,6 +44,40 @@ function shareUrl() {
 
 // ---------------------------------------------------------------- scene
 const studio = new Studio(document.getElementById('viewport'));
+const hand = new Hand();
+studio.setHand(hand);
+
+// Show or hide the hand. The model (a few MB) is only loaded the first time.
+let handRequest = 0;
+function applyHand(moveCamera = false) {
+  const want = state.showHand;
+  syncToolbar();
+  if (!want) {
+    hand.group.visible = false;
+    studio.setHand(hand);
+    return;
+  }
+  const req = ++handRequest;
+  if (!hand.meta) toast('Loading the hand…');
+  hand.load().then(() => {
+    if (req !== handRequest || !state.showHand) return;
+    hand.setTone(state.skinTone);
+    hand.setRingSize(state.ringSizeEU);
+    hand.group.visible = true;
+    studio.setHand(hand);
+    if (moveCamera) studio.setView('hand');
+  }).catch((e) => {
+    console.error(e);
+    toast('Could not load the hand model');
+    state.showHand = false;
+    syncToolbar();
+    panel?.refresh();
+  });
+}
+
+function syncToolbar() {
+  document.querySelectorAll('#toolbar [data-action="toggleHand"]').forEach((b) => b.classList.toggle('on', !!state.showHand));
+}
 
 const metalColor = () => new THREE.Color().setRGB(...(METALS[state.metal] || METALS.yellow18).color, THREE.LinearSRGBColorSpace);
 
@@ -84,6 +119,7 @@ function rebuild() {
   const built = buildRing(state, materials);
   if (current) disposeRing(current.group);
   current = built;
+  if (hand.meta) hand.setRingSize(state.ringSizeEU); // finger matches the ring size
   studio.placeRing(built.group, built);
   if (state.haloAutoSize) state.haloStoneSize = Math.round(built.info.haloStoneSize * 100) / 100;
   updateSummary(built.info);
@@ -106,6 +142,8 @@ const STUDIO_KEYS = {
   exposure: () => studio.setExposure(state.exposure),
   bloom: () => studio.setBloom(state.bloom),
   autoRotate: () => studio.setAutoRotate(state.autoRotate),
+  showHand: () => applyHand(true),
+  skinTone: () => { hand.setTone(state.skinTone); studio.needsRender = true; },
 };
 
 let geometryDirty = false;
@@ -129,12 +167,19 @@ function applyAll() {
   studio.setBloom(state.bloom);
   studio.setAutoRotate(state.autoRotate);
   rebuild();
+  applyHand(state.showHand && !hand.group.visible);
   panel.refresh();
   designsUI?.update();
   writeUrl();
 }
 
 const actions = {
+  toggleHand: () => {
+    state.showHand = !state.showHand;
+    applyHand(true);
+    panel.refresh();
+    writeUrl();
+  },
   viewTop: () => studio.setView('top'),
   view34: () => studio.setView('view34'),
   viewSide: () => studio.setView('side'),
