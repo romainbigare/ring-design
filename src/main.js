@@ -1,6 +1,7 @@
 // App entry: state, wiring between the control panel, the ring builder and the studio.
 import * as THREE from 'three';
-import { DEFAULTS, PRESETS, METALS, SCHEMA, TOOLBAR } from './params.js';
+import { DEFAULTS, METALS, SCHEMA, TOOLBAR } from './params.js';
+import { createDesignsUI, pickDesign } from './designs.js';
 import { Studio } from './studio.js';
 import { buildRing, disposeRing } from './ring.js';
 import { createDiamondMaterial, setDiamondOptions } from './gems.js';
@@ -118,6 +119,7 @@ const STUDIO_KEYS = {
 };
 
 let geometryDirty = false;
+let designsUI = null;
 let hashTimer = 0;
 
 function onChange(key) {
@@ -125,6 +127,7 @@ function onChange(key) {
   else if (MATERIAL_KEYS.has(key)) applyMaterials();
   else geometryDirty = true;
   if (key === 'metal') geometryDirty = true; // summary only, cheap enough
+  designsUI?.update();
   clearTimeout(hashTimer);
   hashTimer = setTimeout(writeUrl, 300);
 }
@@ -137,14 +140,11 @@ function applyAll() {
   studio.setAutoRotate(state.autoRotate);
   rebuild();
   panel.refresh();
+  designsUI?.update();
   writeUrl();
 }
 
 const actions = {
-  presetA: () => { Object.assign(state, PRESETS.A); applyAll(); toast('Ring A'); },
-  presetB: () => { Object.assign(state, PRESETS.B); applyAll(); toast('Ring B'); },
-  presetC: () => { Object.assign(state, PRESETS.C); applyAll(); toast('Ring C'); },
-  presetD: () => { Object.assign(state, PRESETS.D); applyAll(); toast('Ring D'); },
   viewTop: () => studio.setView('top'),
   view34: () => studio.setView('view34'),
   viewSide: () => studio.setView('side'),
@@ -178,6 +178,16 @@ const panel = createPanel(
   SCHEMA, TOOLBAR, state,
   { onChange, onAction: (a) => actions[a]?.() },
 );
+
+// Saved designs (browser storage), at the top of the panel.
+designsUI = createDesignsUI(panel.body, state, {
+  toast,
+  onLoad: (params, name) => {
+    Object.assign(state, pickDesign(DEFAULTS), params);
+    applyAll();
+    toast(name);
+  },
+});
 
 // Keep the ring centred in the free space next to the desktop side panel.
 const panelEl = document.getElementById('panel');

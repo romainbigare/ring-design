@@ -40,7 +40,8 @@ export const DEFAULTS = {
   // Cardinal stones (N, S, E, W)
   cardinalShape: 'round',   // round | pointed | pear | marquise
   cardinalScale: 1.0,
-  tipLength: 0.8,           // length of the gold point ('pointed' setting)
+  tipLength: 0.6,           // length of the gold point ('pointed' setting)
+  tipRoundness: 0.7,        // 0 = straight sides, sharp point; 1 = round pear
 
   // Connection arms between centre bezel and halo
   legsMode: 'auto',         // auto | none | cardinal | all
@@ -87,7 +88,7 @@ export const PRESETS = {
   C: {
     stoneWidth: 9.2, stoneLength: 6.0, stoneDepth: 1.26,
     haloCount: 12, haloAutoSize: true, haloGap: 0.12, haloSpacing: 0.06, cupWall: 0.34,
-    cardinalShape: 'pointed', cardinalScale: 1.3, tipLength: 0.9,
+    cardinalShape: 'pointed', cardinalScale: 1.3, tipLength: 0.6, tipRoundness: 0.7,
     ribbed: true, ribDepth: 0.045, milgrain: true, milgrainMode: 'inner', legsMode: 'auto',
     haloPattern: 'uniform',
   },
@@ -103,17 +104,7 @@ export const METALS = {
 // Control panel schema. type: range | select | toggle | buttons
 export const SCHEMA = [
   {
-    folder: 'Design', open: true, items: [
-      { type: 'buttons', items: [
-        { label: 'Ring A', action: 'presetA' },   // photo 1, top: 12 stones
-        { label: 'Ring B', action: 'presetB' },   // photo 1, bottom: 16 stones
-        { label: 'Ring C', action: 'presetC' },   // photo 2: ribbed, pointy collars
-        { label: 'Ring D', action: 'presetD' },   // big / small pattern
-      ] },
-    ],
-  },
-  {
-    folder: 'Centre diamond', open: true, items: [
+    folder: 'Centre diamond', open: false, items: [
       { key: 'stoneWidth', label: 'Width', type: 'range', min: 6, max: 12, step: 0.1, unit: 'mm' },
       { key: 'stoneLength', label: 'Height', type: 'range', min: 4, max: 9, step: 0.1, unit: 'mm' },
       { key: 'stoneDepth', label: 'Depth', type: 'range', min: 0.8, max: 3, step: 0.01, unit: 'mm' },
@@ -123,26 +114,26 @@ export const SCHEMA = [
     ],
   },
   {
-    folder: 'Entourage', open: true, items: [
+    folder: 'Entourage', open: false, items: [
       { key: 'haloCount', label: 'Number of stones', type: 'range', min: 8, max: 26, step: 1 },
       { key: 'haloAutoSize', label: 'Auto size stones', type: 'toggle' },
-      { key: 'haloStoneSize', label: 'Stone size (big)', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm' },
-      { key: 'haloSpacing', label: 'Space between stones', type: 'range', min: 0, max: 0.8, step: 0.01, unit: 'mm' },
+      { key: 'haloStoneSize', label: 'Stone size (big)', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm', when: (s) => !s.haloAutoSize },
+      { key: 'haloSpacing', label: 'Space between stones', type: 'range', min: 0, max: 0.8, step: 0.01, unit: 'mm', when: (s) => s.haloAutoSize },
       { key: 'haloGap', label: 'Distance to centre', type: 'range', min: 0, max: 2.5, step: 0.01, unit: 'mm' },
       { key: 'cupWall', label: 'Setting collar', type: 'range', min: 0.12, max: 0.8, step: 0.01, unit: 'mm' },
       { key: 'ribbed', label: 'Ribbed collar', type: 'toggle' },
-      { key: 'ribDepth', label: 'Rib depth', type: 'range', min: 0.01, max: 0.1, step: 0.005, unit: 'mm' },
+      { key: 'ribDepth', label: 'Rib depth', type: 'range', min: 0.01, max: 0.1, step: 0.005, unit: 'mm', when: (s) => s.ribbed },
       { key: 'milgrain', label: 'Milgrain beads', type: 'toggle' },
-      { key: 'milgrainMode', label: 'Beads position', type: 'select', options: [
+      { key: 'milgrainMode', label: 'Beads position', type: 'select', when: (s) => s.milgrain, options: [
         { value: 'both', label: 'Stone + outer edge' },
         { value: 'inner', label: 'Around the stone' },
         { value: 'outer', label: 'Outer edge' },
       ] },
-      { key: 'milgrainSize', label: 'Bead size', type: 'range', min: 0.06, max: 0.25, step: 0.005, unit: 'mm' },
+      { key: 'milgrainSize', label: 'Bead size', type: 'range', min: 0.06, max: 0.25, step: 0.005, unit: 'mm', when: (s) => s.milgrain },
     ],
   },
   {
-    folder: 'Stone pattern', open: true, items: [
+    folder: 'Stone pattern', open: false, items: [
       { key: 'haloPattern', label: 'Pattern', type: 'select', options: [
         { value: 'uniform', label: 'All the same' },
         { value: 'alternate', label: 'Big · small · big · small' },
@@ -153,8 +144,8 @@ export const SCHEMA = [
         { value: 'graduatedDiagonal', label: 'Graduated, big at diagonals' },
         { value: 'graduatedEastWest', label: 'Graduated, big at the sides' },
       ] },
-      { key: 'smallRatio', label: 'Small stone size', type: 'range', min: 0.35, max: 1, step: 0.01, unit: '×' },
-      { key: 'smallAlign', label: 'Small stones line', type: 'select', options: [
+      { key: 'smallRatio', label: 'Small stone size', type: 'range', min: 0.35, max: 1, step: 0.01, unit: '×', when: (s) => s.haloPattern !== 'uniform' },
+      { key: 'smallAlign', label: 'Small stones line', type: 'select', when: (s) => s.haloPattern !== 'uniform', options: [
         { value: 'middle', label: 'Centred' },
         { value: 'inner', label: 'Inner edge' },
         { value: 'outer', label: 'Outer edge' },
@@ -162,7 +153,7 @@ export const SCHEMA = [
     ],
   },
   {
-    folder: 'Cardinal stones', open: true, items: [
+    folder: 'Cardinal stones', open: false, items: [
       { key: 'cardinalShape', label: 'Shape', type: 'select', options: [
         { value: 'round', label: 'Round' },
         { value: 'pointed', label: 'Round, pointy collar' },
@@ -170,7 +161,8 @@ export const SCHEMA = [
         { value: 'marquise', label: 'Marquise (pointy)' },
       ] },
       { key: 'cardinalScale', label: 'Size', type: 'range', min: 0.8, max: 2.2, step: 0.05, unit: '×' },
-      { key: 'tipLength', label: 'Point length', type: 'range', min: 0.2, max: 2.5, step: 0.05, unit: 'mm' },
+      { key: 'tipLength', label: 'Point length', type: 'range', min: 0.2, max: 2, step: 0.05, unit: 'mm', when: (s) => s.cardinalShape === 'pointed' },
+      { key: 'tipRoundness', label: 'Point shape', type: 'range', min: 0, max: 1, step: 0.01, when: (s) => s.cardinalShape === 'pointed' }, // 0 sharp … 1 pear
     ],
   },
   {
@@ -181,7 +173,7 @@ export const SCHEMA = [
         { value: 'cardinal', label: 'Cardinal only' },
         { value: 'all', label: 'Every stone' },
       ] },
-      { key: 'legWidth', label: 'Arm width', type: 'range', min: 0.25, max: 1.0, step: 0.01, unit: 'mm' },
+      { key: 'legWidth', label: 'Arm width', type: 'range', min: 0.25, max: 1.0, step: 0.01, unit: 'mm', when: (s) => s.legsMode !== 'none' },
       { key: 'galleryHeight', label: 'Head height', type: 'range', min: 0.6, max: 3, step: 0.05, unit: 'mm' },
     ],
   },

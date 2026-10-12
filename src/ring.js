@@ -292,16 +292,41 @@ function cupProfile({ wall, lip, yTop, yBot, inner, roundR = 0.05, foot = wall *
   return roundCorners(pts, roundR, 3).map((p) => [p.x, p.y]);
 }
 
+// Outline of a pear-shaped collar around a circle of radius Ro, with its point
+// at distance T along +Z. Returns radius(theta), theta measured from +Z.
+// The sides are circular arcs tangent to the circle and meeting at the
+// point (like a pear-cut stone). roundness 0 = straight sides (sharp
+// teardrop), 1 = very round sides (blunt point).
+function pearRadius(Ro, T, roundness) {
+  const solve = (Rs) => {
+    const v = (T * T + Ro * Ro - 2 * Rs * Ro) / (2 * T);
+    const u2 = (Rs - Ro) * (Rs - Ro) - v * v;
+    return u2 > 0 ? { u: Math.sqrt(u2), v, Rs } : null;
+  };
+  let RsMin = Ro * 1.001;
+  while (!solve(RsMin * 1.02)) RsMin *= 1.02;
+  const RsMax = Ro * 40;
+  const k = Math.pow(1 - THREE.MathUtils.clamp(roundness, 0, 1), 2.5);
+  const arc = solve(RsMin * 1.06 + (RsMax - RsMin * 1.06) * k);
+  const thT = Math.atan2(arc.u, -arc.v); // where the arc touches the circle
+  return (theta) => {
+    const th = Math.abs(theta);
+    if (th >= thT) return Ro;
+    // ray from the centre to the arc of the right side (centre at (-u, v))
+    const dc = -Math.sin(th) * arc.u + Math.cos(th) * arc.v;
+    return dc + Math.sqrt(Math.max(0, dc * dc - (arc.u * arc.u + arc.v * arc.v) + arc.Rs * arc.Rs));
+  };
+}
+
 // Halo cup ("collet") in the stone's local frame (+Z = away from the centre).
 // Cross-section: thin lip holding the stone, a ring of milgrain beads, a
 // sloped collar with radial ribs, a rounded outer rim, and a tapered body.
 // With pointedTip > 0 the collar of a round stone stretches into a teardrop
 // point along +Z, like the cardinal settings of the reference ring.
-function buildCup({ gem, gw, wall, yTop, yBot, pointedTip, roundStone, ribbed, ribDepth, milgrain, milgrainMode, beadR }) {
+function buildCup({ gem, gw, wall, yTop, yBot, pointedTip, tipRoundness = 0.7, roundStone, ribbed, ribDepth, milgrain, milgrainMode, beadR }) {
   const r = gw / 2;
   const Ro = r + wall;
-  const T = Ro + pointedTip;
-  const phi = pointedTip > 0 ? Math.acos(Ro / T) : 0;
+  const pear = pointedTip > 0 ? pearRadius(Ro, Ro + pointedTip, tipRoundness) : null;
   const ribPitch = 0.2;
   const perimEst = 2 * Math.PI * Ro + 2 * pointedTip;
   const nRibs = Math.max(12, Math.round(perimEst / ribPitch));
@@ -323,12 +348,7 @@ function buildCup({ gem, gw, wall, yTop, yBot, pointedTip, roundStone, ribbed, r
   const normals = outlineNormals(base);
 
   // Collar width for every outline sample (teardrop for the pointed setting).
-  const walls = base.map((q) => {
-    if (!(pointedTip > 0)) return wall;
-    const th = Math.abs(Math.atan2(q.x, q.y));
-    const rho = th < phi ? Ro / Math.cos(phi - th) : Ro;
-    return rho - r;
-  });
+  const walls = base.map((q) => (pear ? pear(Math.atan2(q.x, q.y)) - r : wall));
 
   const lip = 0.05;
   const beadsIn = milgrain && milgrainMode !== 'outer';
@@ -500,6 +520,7 @@ export function buildRing(P, materials) {
     const cupData = buildCup({
       gem: { outline }, gw, wall: w, yTop, yBot,
       pointedTip: isCard && pointed ? P.tipLength : 0,
+      tipRoundness: P.tipRoundness,
       roundStone: !isCard || shape === 'round' || pointed,
       ribbed: P.ribbed, ribDepth: P.ribDepth,
       milgrain: P.milgrain, milgrainMode: P.milgrainMode, beadR,

@@ -55,7 +55,7 @@ export function toast(message, ms = 2200) {
 // ---------------------------------------------------------------- panel
 
 export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChange, onAction } = {}) {
-  const change = (key, value) => { if (onChange) onChange(key, value); };
+  const change = (key, value) => { if (onChange) onChange(key, value); updateVisibility(); };
   const action = (name) => { if (onAction) onAction(name); };
   const rows = new Map();   // key -> { sync(), row }
 
@@ -198,7 +198,6 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
     input.addEventListener('input', () => {
       state[item.key] = input.checked;
       change(item.key, input.checked);
-      updateDisabled();
     });
     return { row, sync: () => { input.checked = !!state[item.key]; }, controls: [input] };
   }
@@ -224,6 +223,7 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
       else if (item.type === 'buttons') built = buildButtons(item);
       else continue;
       content.append(built.row);
+      built.when = item.when;
       if (item.key) rows.set(item.key, built);
       if (item.type === 'buttons') {
         item.items.forEach((b, i) => {
@@ -234,23 +234,15 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
     body.append(details);
   }
 
-  // The halo stone size is computed by the app while "auto size" is on.
-  function setDisabled(key, disabled) {
-    const r = rows.get(key);
-    if (!r) return;
-    r.row.classList.toggle('disabled', disabled);
-    for (const c of r.controls || []) {
-      if (c.type === 'text') c.readOnly = disabled;
-      else c.disabled = disabled;
-    }
-  }
-  function updateDisabled() {
-    setDisabled('haloStoneSize', !!state.haloAutoSize);
+  // Rows with a `when(state)` rule are only shown when they matter
+  // (e.g. the point length only for the pointy collar).
+  function updateVisibility() {
+    for (const r of rows.values()) if (r.when) r.row.hidden = !r.when(state);
   }
 
   function refresh() {
     for (const r of rows.values()) if (r.sync) r.sync();
-    updateDisabled();
+    updateVisibility();
   }
   refresh();
 
@@ -262,5 +254,5 @@ export function createPanel(panelEl, toolbarEl, schema, toolbar, state, { onChan
     toolbarEl.append(b);
   }
 
-  return { refresh };
+  return { refresh, body };
 }

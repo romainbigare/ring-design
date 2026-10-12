@@ -22,15 +22,19 @@ does not work, because browsers block ES modules on `file://` links.)
 4. Select the branch `main` and the folder `/ (root)`, then click **Save**.
 5. After a minute your ring designer is online at `https://<your-name>.github.io/<repo-name>/`.
 
-## Presets
+## My designs
 
-The presets are in the "Design" box:
+At the top of the panel, **My designs** keeps your own versions of the ring:
 
-- **Ring A** (first photo, top ring): 12 halo stones, a little more space between the stones.
-- **Ring B** (first photo, bottom ring): 16 halo stones, a tight and full entourage.
-- **Ring C** (second photo): ribbed gold collars, and the four cardinal collars
-  are drawn out into points (the stones stay round).
-- **Ring D**: like Ring B, with a big / small / big / small pattern.
+- **+ Save** stores the current ring under a name (same name = update it).
+- Tap a name to open that design. The design you are looking at is shown in gold.
+- **×** removes a design. You can **Undo** for a few seconds.
+
+Designs are saved in this browser (local storage). To send a design to another
+person or device, use the **Share** button. On the first visit, four starter
+designs are added: **Ring A** and **Ring B** (first photo, 12 and 16 stones),
+**Ring C** (second photo: ribbed, pear-shaped pointy collars) and **Ring D**
+(big / small pattern). You can remove them like any other design.
 
 ## Parameters
 
@@ -45,12 +49,16 @@ The presets are in the "Design" box:
   inner edge, or on the outer edge). Patterns start from the cardinal stones,
   so the ring always stays symmetric.
 - **Cardinal stones** (north, south, east, west): round, round with a pointy
-  collar, pear or marquise; size; point length.
+  collar, pear or marquise; size; and for the pointy collar its point length
+  and point shape (from sharp to a soft pear).
 - **Connection arms**: gold arms from the centre bezel to the halo stones
   (auto = only when a stone does not touch the bezel), arm width, head height.
 - **Band**: ring size (EU), metal (yellow, rose, white gold, platinum), width,
   thickness, taper, profile (comfort, round, flat).
 - **Studio**: backdrop, exposure, sparkle glow, fire (dispersion), light bounces, turn table.
+
+All sections start closed, and a slider only shows when it matters (for
+example "Point length" only for the pointy collar).
 
 Tips: double-click a slider name to reset it. Click on a number to type your own value.
 Drag the ring to turn it, and pinch or scroll to zoom. On a computer, the buttons at
