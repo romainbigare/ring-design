@@ -145,6 +145,7 @@ export const SCHEMA = [
         { value: 'graduatedCardinal', label: 'Graduated, big at N/S/E/W' },
         { value: 'graduatedDiagonal', label: 'Graduated, big at diagonals' },
         { value: 'graduatedEastWest', label: 'Graduated, big at the sides' },
+        { value: 'graduatedNorthSouth', label: 'Graduated, small E/W → big N/S' },
       ] },
       { key: 'smallRatio', label: 'Small stone size', type: 'range', min: 0.35, max: 1, step: 0.01, unit: '×', when: (s) => s.haloPattern !== 'uniform' },
       { key: 'smallAlign', label: 'Small stones line', type: 'select', when: (s) => s.haloPattern !== 'uniform', options: [

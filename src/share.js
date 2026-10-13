@@ -31,7 +31,7 @@ const V1 = [
   ['milgrainMode',   'mm', 'both', ['both', 'inner', 'outer']],
   ['milgrainSize',   'ms', 0.13],
   ['haloPattern',    'pt', 'uniform', ['uniform', 'alternate', 'bigTwoSmall', 'bigThreeSmall', 'twoBigSmall',
-    'graduatedCardinal', 'graduatedDiagonal', 'graduatedEastWest']],
+    'graduatedCardinal', 'graduatedDiagonal', 'graduatedEastWest', 'graduatedNorthSouth']],
   ['smallRatio',     'sr', 0.65],
   ['smallAlign',     'sa', 'middle', ['middle', 'inner', 'outer']],
   ['cardinalShape',  'cp', 'round', ['round', 'pointed', 'pear', 'marquise']],

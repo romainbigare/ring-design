@@ -191,6 +191,11 @@ export const HALO_PATTERNS = {
   graduatedCardinal: (i, N) => 0.5 + 0.5 * Math.cos((8 * Math.PI * i) / N), // big at N/S/E/W
   graduatedDiagonal: (i, N) => 0.5 - 0.5 * Math.cos((8 * Math.PI * i) / N), // big at the diagonals
   graduatedEastWest: (i, N) => 0.5 + 0.5 * Math.cos((4 * Math.PI * i) / N), // big at the sides
+  // Even steps from the smallest at East/West up to the biggest at North/South.
+  graduatedNorthSouth: (i, N) => {
+    const t = ((4 * i) / N) % 2; // 0 at E/W, 1 at N/S
+    return 1 - Math.abs(1 - t);
+  },
 };
 
 function patternFactor(pattern, i, N, smallRatio) {

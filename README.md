@@ -44,8 +44,9 @@ designs are added: **Ring A** and **Ring B** (first photo, 12 and 16 stones),
   distance to the centre, setting collar width, ribbed collar and rib depth,
   milgrain beads (around the stone, on the outer edge, or both) and bead size.
 - **Stone pattern**: all the same, big·small, big·small·small, big·3 small,
-  big·big·small, or graduated sizes (big at N/S/E/W, at the diagonals, or at
-  the sides); size of the small stones; and where they sit (centred, on the
+  big·big·small, or graduated sizes (big at N/S/E/W, at the diagonals, at
+  the sides, or growing in even steps from small at East/West to big at
+  North/South); size of the small stones; and where they sit (centred, on the
   inner edge, or on the outer edge). Patterns start from the cardinal stones,
   so the ring always stays symmetric.
 - **Cardinal stones** (north, south, east, west): round, round with a pointy
