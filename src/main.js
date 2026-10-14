@@ -82,6 +82,8 @@ function syncToolbar() {
 const metalColor = () => new THREE.Color().setRGB(...(METALS[state.metal] || METALS.yellow18).color, THREE.LinearSRGBColorSpace);
 
 const gold = new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.12, envMapIntensity: 1 });
+// Satin-finished gold for the bed between the halo stones.
+const goldSatin = new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.34, envMapIntensity: 1.15 });
 const diamondOpts = () => ({
   envMap: studio.envMap,
   ior: 2.42,
@@ -91,6 +93,7 @@ const diamondOpts = () => ({
 });
 const materials = {
   gold,
+  goldSatin,
   center: createDiamondMaterial({ planes: [], ...diamondOpts() }),
   halo: createDiamondMaterial({ planes: [], ...diamondOpts() }),
   cardinal: createDiamondMaterial({ planes: [], ...diamondOpts() }),
@@ -100,6 +103,7 @@ function applyMaterials() {
   const m = METALS[state.metal] || METALS.yellow18;
   gold.color.copy(metalColor());
   gold.roughness = m.roughness;
+  goldSatin.color.copy(gold.color);
   for (const k of ['center', 'halo', 'cardinal']) {
     // Light reflected by the polished cup behind the stone: mix of neutral and metal colour.
     const warmth = k === 'center' ? state.stoneWarmth : 0.7;

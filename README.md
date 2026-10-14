@@ -41,7 +41,8 @@ designs are added: **Ring A** and **Ring B** (first photo, 12 and 16 stones),
 - **Centre diamond**: width, height, depth, number of rose facet rings
   (2 = classic Dutch rose with 24 facets, 3 = 60 facets), gold glow in the stone, bezel wall.
 - **Entourage**: number of stones, auto size, stone size, space between stones,
-  distance to the centre, setting collar width, ribbed collar and rib depth,
+  distance to the centre, gold between stones (a satin gold bed that fills the
+  gaps between the halo and the centre bezel) and its depth, setting collar width, ribbed collar and rib depth,
   milgrain beads (around the stone, on the outer edge, or both) and bead size.
 - **Stone pattern**: all the same, big·small, big·small·small, big·3 small,
   big·big·small, or graduated sizes (big at N/S/E/W, at the diagonals, at

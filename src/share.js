@@ -49,6 +49,8 @@ const V1 = [
   ['autoRotate',     'ar', false],
   ['showHand',       'hd', false],
   ['skinTone',       'tn', 'light', ['light', 'medium', 'tan', 'deep']],
+  ['goldFill',       'gf', false],
+  ['fillRecess',     'fr', 0.22],
 ];
 
 const BY_CODE = new Map(V1.map((row) => [row[1], row]));

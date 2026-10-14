@@ -25,6 +25,8 @@ export const DEFAULTS = {
   haloAutoSize: true,
   haloGap: 0.1,             // distance between centre bezel and halo cups
   haloSpacing: 0.05,        // space between neighbouring halo cups (auto size)
+  goldFill: false,          // gold bed between the halo stones and the bezel
+  fillRecess: 0.22,         // how far the gold bed sits below the cup rims
   cupWall: 0.32,             // width of the gold collar around each halo stone
   ribbed: true,             // radial ribs on the collar
   ribDepth: 0.045,
@@ -122,6 +124,8 @@ export const SCHEMA = [
       { key: 'haloStoneSize', label: 'Stone size (big)', type: 'range', min: 0.8, max: 3, step: 0.05, unit: 'mm', when: (s) => !s.haloAutoSize },
       { key: 'haloSpacing', label: 'Space between stones', type: 'range', min: 0, max: 0.8, step: 0.01, unit: 'mm', when: (s) => s.haloAutoSize },
       { key: 'haloGap', label: 'Distance to centre', type: 'range', min: 0, max: 2.5, step: 0.01, unit: 'mm' },
+      { key: 'goldFill', label: 'Gold between stones', type: 'toggle' },
+      { key: 'fillRecess', label: 'Fill depth', type: 'range', min: 0, max: 0.6, step: 0.01, unit: 'mm', when: (s) => s.goldFill },
       { key: 'cupWall', label: 'Setting collar', type: 'range', min: 0.12, max: 0.8, step: 0.01, unit: 'mm' },
       { key: 'ribbed', label: 'Ribbed collar', type: 'toggle' },
       { key: 'ribDepth', label: 'Rib depth', type: 'range', min: 0.01, max: 0.1, step: 0.005, unit: 'mm', when: (s) => s.ribbed },

@@ -567,6 +567,28 @@ export function buildRing(P, materials) {
     goldGeoms.push(g);
   }
 
+  // ---- gold fill between the halo and the centre bezel --------------------
+  // A gold bed from inside the bezel wall out to the line of the big stones'
+  // centres, so the gaps between round cups and the bezel are gold, not
+  // empty. It sits a little below the cup rims so each setting still reads.
+  if (P.goldFill) {
+    const collarTop = haloGirdleY + 0.03 * D / 2 + 0.1;
+    const top = Math.min(collarTop - P.fillRecess, bezelTop - 0.05);
+    const bot = Math.min(top - 0.35, haloGirdleY - 0.45);
+    const oIn = P.bezelWall - 0.12;
+    const oOut = d0 + D * 0.5;
+    const fillProfile = roundCorners([
+      new THREE.Vector2(oIn, bot),
+      new THREE.Vector2(oOut, bot),
+      new THREE.Vector2(oOut, top),
+      new THREE.Vector2(oIn, top),
+    ].reverse(), 0.06, 3).map((v) => [v.x, v.y]);
+    const fill = new THREE.Mesh(sweepClosed(ellipseOutline(a, b, 0, 240), fillProfile), materials.goldSatin || gold);
+    fill.castShadow = true;
+    fill.receiveShadow = true;
+    group.add(fill);
+  }
+
   // ---- under-gallery rail ------------------------------------------------
   const railR = 0.28;
   const railY = lowest + 0.1;
